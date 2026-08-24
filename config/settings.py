@@ -6,6 +6,7 @@ All secrets are loaded from environment variables via python-decouple.
 Never hardcode SECRET_KEY, DB credentials, or camera RTSP URLs.
 """
 
+import os
 from pathlib import Path
 from decouple import config, Csv
 
@@ -19,6 +20,10 @@ REPO_ROOT = BASE_DIR.parent
 SECRET_KEY = config("SECRET_KEY", default="dev-insecure-key-replace-in-production")
 DEBUG = config("DEBUG", default=True, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
+
+# Automatically add the Render hostname
+if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
+    ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
 
 # ── Application definition ───────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -112,3 +117,6 @@ YOLO_DEVICE = config("YOLO_DEVICE", default="cpu")
 
 # ── Misc ─────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
