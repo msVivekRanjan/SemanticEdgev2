@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Documentation — SemanticEdge{% endblock %}
+{% block meta_description %}SemanticEdge NVR documentation. Getting started, configuration, and API reference.{% endblock %}
+
+{% block content %}
+<div class="docs-layout">
+
+  <!-- Sidebar -->
+  <aside class="docs-sidebar" aria-label="Documentation navigation">
+    <div class="sidebar-nav">
+      {% if sidebar_groups %}
+        {% for group in sidebar_groups %}
+          <p class="sidebar-nav__category">{{ group.category }}</p>
+          {% for page in group.pages %}
+            <a href="{{ page.get_absolute_url }}" class="sidebar-nav__link">
+              {{ page.title }}
+            </a>
+          {% endfor %}
+        {% endfor %}
+      {% else %}
+        <p style="font-size: 13px; color: var(--outline); font-weight: 300;">
+          No documentation pages yet.
+        </p>
+      {% endif %}
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="docs-content">
+    <div class="empty-state">
+      <span class="material-symbols-outlined" style="font-variation-settings:'wght' 100;">description</span>
+      <h1 class="empty-state__title">Documentation</h1>
+      <p class="empty-state__body">
+        No documentation pages have been created yet.<br>
+        Staff members can add pages via the
+        <a href="/admin/docs/docpage/add/" style="color: var(--primary);">admin panel</a>.
+      </p>
+      <a href="{% url 'core:home' %}" class="text-link" style="margin-top: var(--space-md);">← Back to Platform</a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "nvr/base_nvr.html" %}
+{% load static %}
+
+{% block title %}Live Monitor — SemanticEdge NVR{% endblock %}
+
+{% block nvr_content %}
+<!-- ── Top Toolbar ────────────────────────────────────────────────────────── -->
+<div class="nvr-toolbar">
+  <div class="nvr-toolbar__title">
+    <span class="material-symbols-outlined" style="color: var(--primary);">videocam</span>
+    <span>Live Monitor</span>
+    {% if selected_camera %}
+      <span style="font-size: 13px; font-weight: 400; color: var(--outline); font-family: var(--font-mono); margin-left: 8px;">
+        [{{ selected_camera.name }}]
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="nvr-filter-group">
+    <!-- Camera Switcher Dropdown -->
+    <form method="get" id="camera-select-form" style="display: flex; gap: 8px;">
+      <select name="camera" class="nvr-select" onchange="this.form.submit()">
+        {% for cam in cameras %}
+          <option value="{{ cam.id }}" {% if selected_camera.id == cam.id %}selected{% endif %}>
+            📹 {{ cam.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+
+    <a href="{% url 'nvr:log' selected_camera.id|default:1 %}" class="btn btn--ghost btn--sm" title="View CSV Detection Log">
+      <span class="material-symbols-outlined" style="font-size: 16px;">receipt_long</span>
+      Logs
+    </a>
+
+    <a href="{% url 'nvr:settings' %}" class="btn btn--ghost btn--sm" title="Add / Manage Cameras">
+      <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+      Add Feed
+    </a>
+  </div>
+</div>
+
+<!-- ── Live Grid Viewport & Telemetry ────────────────────────────────────── -->
+<div class="nvr-live-grid">
+
+  <!-- Main Video Viewport -->
+  <div class="nvr-live-feed-viewport">
+    {% if selected_camera %}
+      <!-- Live MJPEG Stream -->
+      <img
+        id="camera-stream"
+        src="{% url 'nvr:stream' selected_camera.id %}"
+        alt="Live YOLO stream for {{ selected_camera.name }}"
+        onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'640\' height=\'360\' viewBox=\'0 0 640 360\'%3E%3Crect width=\'640\' height=\'360\' fill=\'%230d0e10\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23928ea1\' font-family=\'sans-serif\' font-size=\'16\'%3ECamera Stream Initializing or Source Offline%3C/text%3E%3C/svg%3E';"
+      />
+
+      <!-- Live Stream HUD Badge Overlay -->
+      <div class="nvr-live-overlay-hud">
+        <div class="nvr-live-hud-badge">
+          <span class="status-dot status-dot--online"></span>
+          <span>LIVE • {{ selected_camera.name }}</span>
+        </div>
+        <div class="nvr-live-hud-badge">
+          <span>YOLOv8 + ByteTrack</span>
+        </div>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="material-symbols-outlined">videocam_off</span>
+        <h2 class="empty-state__title">No Cameras Registered</h2>
+        <p class="empty-state__body">Add your webcam or RTSP camera in the configuration tab to begin live monitoring.</p>
+        <a href="{% url 'nvr:settings' %}" class="btn btn--primary btn--sm">Configure Camera</a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Telemetry & Detection Sidebar -->
+  <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+    {% if selected_camera %}
+      <div class="stats-panel" id="stats-panel" data-stats-url="{% url 'nvr:stats' selected_camera.id %}">
+        <div class="stats-panel__title">Real-Time Inference</div>
+
+        <div class="stats-row">
+          <span class="stats-label">Inference FPS</span>
+          <span class="stats-value" id="stat-fps">0.0</span>
+        </div>
+
+        <div class="stats-row">
+          <span class="stats-label">Active Objects</span>
+          <span class="stats-value" id="stat-total">0</span>
+        </div>
+
+        <div class="stats-row">
+          <span class="stats-label">Track IDs</span>
+          <span class="stats-value" id="stat-track-ids" style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</span>
+        </div>
+
+        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);">
+          <div class="stats-label" style="margin-bottom: 8px; font-weight: 700; text-transform: uppercase; font-size: 10px;">Class Breakdown</div>
+          <div id="stat-counts">
+            <div style="font-size: 12px; color: var(--outline); font-family: var(--font-mono);">Awaiting detections...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feed Properties Card -->
+      <div class="card card--dark" style="font-size: 12px;">
+        <div class="stats-panel__title" style="margin-bottom: 8px; padding-bottom: 4px;">Sensor Parameters</div>
+        <p style="color: var(--on-surface-variant); margin-bottom: 6px;">
+          <strong>Mode:</strong> {% if selected_camera.tracker_enabled %}YOLOv8 + ByteTrack (Tracked){% else %}YOLOv8 (Detect Only){% endif %}
+        </p>
+        <p style="color: var(--on-surface-variant); margin-bottom: 6px; word-break: break-all;">
+          <strong>Source:</strong> <code>{{ selected_camera.source_url }}</code>
+        </p>
+        <p style="color: var(--on-surface-variant);">
+          <strong>Resolution:</strong> Adaptive Letterbox (640x640)
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

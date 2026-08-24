@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}NVR Dashboard — SemanticEdge{% endblock %}
+{% block meta_description %}Monitor your active AI-assisted video streams on the SemanticEdge NVR dashboard.{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <p class="eyebrow" style="margin-bottom: var(--space-xs);">Live Surface</p>
+      <h1 style="font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: -0.02em; color: var(--on-surface);">
+        Camera Feeds
+      </h1>
+    </div>
+    <div style="display: flex; gap: var(--space-md); align-items: center;">
+      <a href="/admin/nvr/camera/add/" class="btn btn--primary btn--sm" target="_blank">
+        <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+        Add Camera
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="camera-grid">
+  {% if cameras %}
+    {% for camera in cameras %}
+      <div class="camera-card">
+        <div class="camera-card__preview">
+          <div class="camera-card__preview-placeholder">
+            <span class="material-symbols-outlined">videocam</span>
+            <span>Live Stream Ready</span>
+          </div>
+        </div>
+        <div class="camera-card__body">
+          <div class="camera-card__header">
+            <h2 class="camera-card__name">{{ camera.name }}</h2>
+            <div class="camera-card__status">
+              <span class="status-dot status-dot--online"></span>
+              <span>Active</span>
+            </div>
+          </div>
+          <p class="camera-card__meta">
+            Source: {{ camera.source_url|truncatechars:35 }}<br>
+            Tracking: {% if camera.tracker_enabled %}ByteTrack (Enabled){% else %}Detection Only{% endif %}
+          </p>
+          <div class="camera-card__actions">
+            <a href="{% url 'nvr:live' camera.id %}" class="btn btn--primary btn--sm" style="flex: 1;">
+              <span class="material-symbols-outlined" style="font-size: 16px;">play_arrow</span>
+              View Live
+            </a>
+            <a href="{% url 'nvr:log' camera.id %}" class="btn btn--ghost btn--sm" title="View Detection Log">
+              <span class="material-symbols-outlined" style="font-size: 16px;">receipt_long</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state" style="grid-column: 1 / -1;">
+      <span class="material-symbols-outlined" style="font-variation-settings:'wght' 100;">videocam_off</span>
+      <h2 class="empty-state__title">No Cameras Configured</h2>
+      <p class="empty-state__body">
+        You have not registered any camera sources yet. Register your webcam (index <code>0</code>) or an RTSP stream in the admin console.
+      </p>
+      <a href="/admin/nvr/camera/add/" class="btn btn--primary btn--sm" style="margin-top: var(--space-md);">
+        Add Your First Camera
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

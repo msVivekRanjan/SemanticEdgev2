@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Detection Logs — {{ camera.name }} | SemanticEdge{% endblock %}
+{% block meta_description %}CSV detection and tracking log records for {{ camera.name }}.{% endblock %}
+
+{% block content %}
+<div class="log-layout">
+  <!-- Header -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-2xl); flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <div style="display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-xs);">
+        <a href="{% url 'nvr:dashboard' %}" class="text-link text-link--muted" style="font-size: 11px;">Dashboard</a>
+        <span style="color: var(--outline-variant);">/</span>
+        <a href="{% url 'nvr:live' camera.id %}" class="text-link text-link--muted" style="font-size: 11px;">{{ camera.name }}</a>
+      </div>
+      <h1 style="font-size: clamp(24px, 3vw, 36px); font-weight: 800; color: var(--on-surface);">
+        Detection &amp; Event Logs
+      </h1>
+      <p class="mono" style="color: var(--outline); font-size: 11px; margin-top: 4px;">
+        Log target: {{ log_path }}
+      </p>
+    </div>
+
+    <div>
+      <a href="{% url 'nvr:live' camera.id %}" class="btn btn--primary btn--sm">
+        <span class="material-symbols-outlined" style="font-size: 16px;">videocam</span>
+        Live Feed
+      </a>
+    </div>
+  </div>
+
+  {% if error %}
+    <div class="alert alert--error">{{ error }}</div>
+  {% endif %}
+
+  <!-- Log Table Card -->
+  <div class="card card--dark" style="padding: 0; overflow-x: auto;">
+    {% if log_rows %}
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Frame</th>
+            <th>Track ID</th>
+            <th>Class</th>
+            <th>Confidence</th>
+            <th>BBox (x1, y1, x2, y2)</th>
+            <th>Center (cx, cy)</th>
+            <th>Line Crossing</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in log_rows %}
+            <tr>
+              <td>{{ row.timestamp }}</td>
+              <td>{{ row.frame_number }}</td>
+              <td>
+                {% if row.track_id != "-1" %}
+                  <span style="color: var(--primary);">#{{ row.track_id }}</span>
+                {% else %}
+                  <span style="color: var(--outline);">N/A</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="class-badge class--{{ row.class|lower }}">
+                  <span class="class-dot"></span>
+                  {{ row.class }}
+                </span>
+              </td>
+              <td>{{ row.confidence }}</td>
+              <td>[{{ row.x1 }}, {{ row.y1 }}, {{ row.x2 }}, {{ row.y2 }}]</td>
+              <td>({{ row.center_x }}, {{ row.center_y }})</td>
+              <td>
+                {% if row.line_crossing_status != "none" %}
+                  <span style="color: var(--tertiary);">{{ row.line_crossing_status }}</span>
+                {% else %}
+                  <span style="color: var(--outline);">none</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        <span class="material-symbols-outlined" style="font-variation-settings:'wght' 100;">receipt_long</span>
+        <h2 class="empty-state__title">No Log Entries Found</h2>
+        <p class="empty-state__body">
+          No detections have been recorded yet for this camera. Once the live stream runs and identifies objects, events will appear here in real time.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

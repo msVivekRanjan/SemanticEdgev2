@@ -1,0 +1,67 @@
+# ── Byte-compiled / optimized / DLL files ─────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ── Virtual Environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# ── Environment & Secrets (NEVER COMMIT CREDENTIALS) ─────────────────────────
+.env
+*.env
+.env.local
+.env.production
+!.env.example
+
+# ── Django Database & Cache ───────────────────────────────────────────────────
+*.sqlite3
+*.db
+db.sqlite3-journal
+
+# ── Static & Media Uploads / Outputs ──────────────────────────────────────────
+media/
+staticfiles/
+output/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.jpg
+*.jpeg
+*.png
+!static/
+
+# ── YOLO & PyTorch Cache ──────────────────────────────────────────────────────
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+runs/
+wandb/
+
+# ── OS & IDE Artifacts ────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ── Testing & Coverage ────────────────────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/

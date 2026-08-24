@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page.title }} — SemanticEdge Docs{% endblock %}
+{% block meta_description %}{{ page.title }} | SemanticEdge NVR documentation.{% endblock %}
+
+{% block extra_head %}
+{# Pygments syntax highlighting (monokai-ish dark theme) #}
+<style>
+/* Pygments "monokai" theme override for dark design system */
+.highlight .hll { background-color: rgba(255,255,255,0.05) }
+.highlight .c  { color: #75715e } /* Comment */
+.highlight .err { color: #f92672 }
+.highlight .k  { color: #66d9ef; font-weight: bold }
+.highlight .l  { color: #ae81ff }
+.highlight .n  { color: var(--on-surface) }
+.highlight .o  { color: #f92672 }
+.highlight .p  { color: var(--on-surface-variant) }
+.highlight .cm { color: #75715e }
+.highlight .cp { color: #75715e }
+.highlight .c1 { color: #75715e; font-style: italic }
+.highlight .cs { color: #75715e; font-style: italic }
+.highlight .kc { color: #66d9ef; font-weight: bold }
+.highlight .kd { color: #66d9ef; font-weight: bold }
+.highlight .kn { color: #f92672; font-weight: bold }
+.highlight .kp { color: #66d9ef }
+.highlight .kr { color: #66d9ef; font-weight: bold }
+.highlight .kt { color: #66d9ef }
+.highlight .ld { color: #e6db74 }
+.highlight .m  { color: #ae81ff }
+.highlight .s  { color: #e6db74 }
+.highlight .na { color: #a6e22e }
+.highlight .nb { color: #f8f8f2 }
+.highlight .nc { color: #a6e22e; font-weight: bold }
+.highlight .no { color: #66d9ef }
+.highlight .nd { color: #a6e22e }
+.highlight .ni { color: #f8f8f2; font-weight: bold }
+.highlight .ne { color: #a6e22e; font-weight: bold }
+.highlight .nf { color: #a6e22e }
+.highlight .nl { color: #f8f8f2; font-weight: bold }
+.highlight .nn { color: #f8f8f2 }
+.highlight .nx { color: #a6e22e }
+.highlight .py { color: #f8f8f2 }
+.highlight .nt { color: #f92672; font-weight: bold }
+.highlight .nv { color: #f8f8f2 }
+.highlight .vc { color: #f8f8f2 }
+.highlight .vg { color: #f8f8f2 }
+.highlight .vi { color: #f8f8f2 }
+.highlight .il { color: #ae81ff }
+.highlight .mi { color: #ae81ff }
+.highlight .mf { color: #ae81ff }
+.highlight .mh { color: #ae81ff }
+.highlight .mo { color: #ae81ff }
+.highlight .sb { color: #e6db74 }
+.highlight .sc { color: #e6db74 }
+.highlight .sd { color: #e6db74; font-style: italic }
+.highlight .s2 { color: #e6db74 }
+.highlight .se { color: #ae81ff; font-weight: bold }
+.highlight .sh { color: #e6db74 }
+.highlight .si { color: #e6db74; font-weight: bold }
+.highlight .sx { color: #e6db74 }
+.highlight .sr { color: #e6db74 }
+.highlight .s1 { color: #e6db74 }
+.highlight .ss { color: #e6db74 }
+.highlight .bp { color: #f8f8f2 }
+.highlight .ow { color: #f92672; font-weight: bold }
+.highlight .w  { color: #f8f8f2 }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="docs-layout">
+
+  <!-- Sidebar -->
+  <aside class="docs-sidebar" aria-label="Documentation navigation">
+    <div class="sidebar-nav">
+      {% for group in sidebar_groups %}
+        <p class="sidebar-nav__category">{{ group.category }}</p>
+        {% for doc_page in group.pages %}
+          <a href="{{ doc_page.get_absolute_url }}"
+             class="sidebar-nav__link {% if doc_page.slug == page.slug %}sidebar-nav__link--active{% endif %}">
+            {{ doc_page.title }}
+          </a>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </aside>
+
+  <!-- Content -->
+  <article class="docs-content">
+    <!-- Page header -->
+    <div style="margin-bottom: var(--space-2xl); padding-bottom: var(--space-2xl); border-bottom: 1px solid rgba(71,69,85,0.2);">
+      <p class="eyebrow" style="margin-bottom: var(--space-sm);">{{ page.category }}</p>
+      <h1 style="font-size: clamp(28px, 4vw, 44px); font-weight: 600; letter-spacing: -0.02em; color: var(--on-surface); margin-bottom: var(--space-sm);">
+        {{ page.title }}
+      </h1>
+      <p class="mono" style="color: var(--outline);">
+        Last updated: {{ page.updated_at|date:"N j, Y" }}
+      </p>
+    </div>
+
+    <!-- Rendered Markdown -->
+    <div class="markdown-body">
+      {{ content_html|safe }}
+    </div>
+
+    <!-- Page navigation (prev/next could be added here in a later iteration) -->
+    <div style="margin-top: var(--space-4xl); padding-top: var(--space-2xl); border-top: 1px solid rgba(71,69,85,0.2);">
+      <a href="{% url 'docs:list' %}" class="text-link text-link--muted">← All Documentation</a>
+    </div>
+
+  </article>
+
+</div>
+{% endblock %}

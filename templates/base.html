@@ -1,0 +1,151 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>{% block title %}SemanticEdge — Locally Processed AI NVR{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}SemanticEdge is an open-source NVR built around real-time AI object detection. All processing is performed locally on your own hardware.{% endblock %}" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%236d5ef5'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='16' fill='white' text-anchor='middle'%3ESE%3C/text%3E%3C/svg%3E" />
+
+  <!-- Design system CSS -->
+  <link rel="stylesheet" href="{% static 'css/design.css' %}" />
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Ambient background glow -->
+  <div class="ambient-glow" aria-hidden="true"></div>
+
+  <!-- ── Navigation ──────────────────────────────────────────────────────── -->
+  <nav class="nav" aria-label="Main navigation">
+    <div class="nav__inner">
+
+      <!-- Logo / wordmark -->
+      <a href="{% url 'core:home' %}" class="nav__logo">SemanticEdge</a>
+
+      <!-- Desktop links -->
+      <div class="nav__links" role="list">
+        <a href="{% url 'core:home' %}"
+           class="nav__link {% if request.resolver_match.app_name == 'core' %}nav__link--active{% endif %}"
+           role="listitem">Platform</a>
+        <a href="{% url 'docs:list' %}"
+           class="nav__link {% if request.resolver_match.app_name == 'docs' %}nav__link--active{% endif %}"
+           role="listitem">Documentation</a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'nvr:live' %}"
+             class="nav__link {% if request.resolver_match.app_name == 'nvr' %}nav__link--active{% endif %}"
+             role="listitem">NVR Console</a>
+        {% endif %}
+      </div>
+
+      <!-- Desktop actions -->
+      <div class="nav__actions">
+        {% if user.is_authenticated %}
+          <a href="{% url 'nvr:live' %}" class="btn btn--ghost btn--sm">
+            <span class="material-symbols-outlined" style="font-size: 16px;">videocam</span>
+            NVR Console
+          </a>
+          <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn--ghost btn--sm" style="cursor: pointer;">
+              Sign Out
+            </button>
+          </form>
+        {% else %}
+          <a href="{% url 'accounts:login' %}" class="btn btn--primary btn--sm">
+            <span>Sign In</span>
+            <span class="material-symbols-outlined" style="font-size: 15px;">arrow_forward</span>
+          </a>
+        {% endif %}
+      </div>
+
+      <!-- Mobile toggle -->
+      <button class="nav__mobile-toggle"
+              id="nav-mobile-toggle"
+              aria-expanded="false"
+              aria-controls="nav-mobile-menu"
+              aria-label="Toggle navigation">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+
+    </div>
+
+    <!-- Mobile menu -->
+    <div class="nav__mobile-menu" id="nav-mobile-menu" role="navigation" aria-label="Mobile navigation">
+      <a href="{% url 'core:home' %}" class="nav__link">Platform</a>
+      <a href="{% url 'docs:list' %}" class="nav__link">Documentation</a>
+      {% if user.is_authenticated %}
+        <a href="{% url 'nvr:live' %}" class="nav__link">NVR Console</a>
+        <form method="post" action="{% url 'accounts:logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="nav__link" style="background:none;border:none;cursor:pointer;font-family:inherit;text-align:left;width:100%;">Sign Out</button>
+        </form>
+      {% else %}
+        <a href="{% url 'accounts:login' %}" class="btn btn--primary btn--sm" style="margin-top: 8px;">
+          <span>Sign In</span>
+          <span class="material-symbols-outlined" style="font-size: 15px;">arrow_forward</span>
+        </a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- ── Django messages ─────────────────────────────────────────────────── -->
+  {% if messages %}
+    <div style="position:fixed;top:88px;right:24px;z-index:100;max-width:360px;">
+      {% for message in messages %}
+        <div class="alert alert--{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% else %}info{% endif %}"
+             role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- ── Main content ────────────────────────────────────────────────────── -->
+  <main class="main-content" id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <a href="{% url 'core:home' %}" class="footer__logo">SemanticEdge</a>
+        <p class="footer__tagline">© 2024 SemanticEdge Technologies. Locally processed edge AI.</p>
+      </div>
+      <div>
+        <h4 class="footer__col-title">Product</h4>
+        <div class="footer__links">
+          <a href="{% url 'core:home' %}" class="footer__link">Platform</a>
+          <a href="{% url 'docs:list' %}" class="footer__link">Documentation</a>
+          <a href="{% url 'accounts:login' %}" class="footer__link">NVR Console</a>
+        </div>
+      </div>
+      <div>
+        <h4 class="footer__col-title">Resources</h4>
+        <div class="footer__links">
+          <a href="https://github.com" class="footer__link" target="_blank" rel="noopener">GitHub Repository</a>
+          <a href="{% url 'docs:list' %}" class="footer__link">Getting Started Guide</a>
+        </div>
+      </div>
+      <div>
+        <h4 class="footer__col-title">Company</h4>
+        <div class="footer__links">
+          <a href="#" class="footer__link">About SemanticEdge</a>
+          <a href="#" class="footer__link">Privacy Policy</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Shared JS -->
+  <script src="{% static 'js/main.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+
+</body>
+</html>

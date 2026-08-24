@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Sign In — SemanticEdge{% endblock %}
+{% block meta_description %}Sign in to your SemanticEdge NVR dashboard.{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+
+    <!-- Brand Header -->
+    <div style="margin-bottom: var(--space-xl);">
+      <h1 class="auth-card__logo">SemanticEdge</h1>
+      <p class="auth-card__subtitle">Sign in to access your NVR monitoring console</p>
+    </div>
+
+    <!-- Non-field error messages -->
+    {% if form.non_field_errors %}
+      <div class="auth-card__error" role="alert">
+        {% for error in form.non_field_errors %}
+          {{ error }}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- Login Form -->
+    <form method="post" class="auth-card__form" id="login-form">
+      {% csrf_token %}
+
+      <div class="auth-card__field">
+        <label class="input-label" for="{{ form.username.id_for_label }}">Username</label>
+        <input
+          type="text"
+          id="{{ form.username.id_for_label }}"
+          name="{{ form.username.html_name }}"
+          class="input"
+          placeholder="admin or demo"
+          autocomplete="username"
+          autofocus
+          value="{{ form.username.value|default:'' }}"
+          required
+        />
+        {% if form.username.errors %}
+          <p style="color: var(--error); font-size: 12px; margin-top: 4px;">{{ form.username.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div class="auth-card__field">
+        <label class="input-label" for="{{ form.password.id_for_label }}">Password</label>
+        <input
+          type="password"
+          id="{{ form.password.id_for_label }}"
+          name="{{ form.password.html_name }}"
+          class="input"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          required
+        />
+        {% if form.password.errors %}
+          <p style="color: var(--error); font-size: 12px; margin-top: 4px;">{{ form.password.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}" />
+      {% endif %}
+
+      <button type="submit" class="btn btn--primary btn--full btn--hero" id="login-submit" style="margin-top: var(--space-xs);">
+        <span>Sign In to NVR</span>
+        <span class="material-symbols-outlined">arrow_forward</span>
+      </button>
+
+    </form>
+
+    <!-- Quick Credentials Helper for Demo -->
+    <div style="margin-top: var(--space-xl); padding: 12px 14px; background-color: var(--surface-container-lowest); border: 1px solid var(--border-subtle); border-radius: var(--radius); font-size: 12px;">
+      <div style="font-weight: 600; color: var(--primary); margin-bottom: 4px; font-family: var(--font-mono);">
+        DEMO CREDENTIALS
+      </div>
+      <div style="color: var(--on-surface-variant); font-family: var(--font-mono);">
+        Admin: <code>admin</code> / <code>admin123</code><br>
+        Standard: <code>demo</code> / <code>demo123</code>
+      </div>
+    </div>
+
+    <!-- Footer Links -->
+    <div style="margin-top: var(--space-xl); padding-top: var(--space-md); border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+      <a href="{% url 'core:home' %}" class="text-link text-link--muted" style="font-size: 11px;">
+        <span class="material-symbols-outlined" style="font-size: 14px;">arrow_back</span>
+        <span>Platform</span>
+      </a>
+      <a href="{% url 'docs:list' %}" class="text-link text-link--muted" style="font-size: 11px;">
+        <span>Documentation</span>
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

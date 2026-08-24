@@ -1,0 +1,146 @@
+{% extends "nvr/base_nvr.html" %}
+{% load static %}
+
+{% block title %}Event Review — SemanticEdge NVR{% endblock %}
+
+{% block nvr_content %}
+<!-- ── Top Toolbar ────────────────────────────────────────────────────────── -->
+<div class="nvr-toolbar">
+  <div class="nvr-toolbar__title">
+    <span class="material-symbols-outlined" style="color: var(--primary);">history</span>
+    <span>Event Review</span>
+    <span class="nvr-count-chip">{{ total_events }} Events</span>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="nvr-filter-group">
+    <!-- Camera Filter -->
+    <select name="camera" class="nvr-select" onchange="this.form.submit()">
+      <option value="all" {% if selected_camera == 'all' %}selected{% endif %}>All Cameras</option>
+      {% for cam in cameras %}
+        <option value="{{ cam.id }}" {% if selected_camera == cam.id|stringformat:"s" %}selected{% endif %}>
+          📹 {{ cam.name }}
+        </option>
+      {% endfor %}
+    </select>
+
+    <!-- Class Filter -->
+    <select name="class" class="nvr-select" onchange="this.form.submit()">
+      <option value="all" {% if selected_class == 'all' %}selected{% endif %}>All Object Classes</option>
+      <option value="person" {% if selected_class == 'person' %}selected{% endif %}>Person</option>
+      <option value="car" {% if selected_class == 'car' %}selected{% endif %}>Car</option>
+      <option value="bicycle" {% if selected_class == 'bicycle' %}selected{% endif %}>Bicycle</option>
+      <option value="truck" {% if selected_class == 'truck' %}selected{% endif %}>Truck</option>
+      <option value="motorcycle" {% if selected_class == 'motorcycle' %}selected{% endif %}>Motorcycle</option>
+      <option value="bus" {% if selected_class == 'bus' %}selected{% endif %}>Bus</option>
+    </select>
+
+    <!-- Time Range Selector -->
+    <select name="time" class="nvr-select" onchange="this.form.submit()">
+      <option value="1h" {% if selected_time == '1h' %}selected{% endif %}>Last 1 Hour</option>
+      <option value="24h" {% if selected_time == '24h' %}selected{% endif %}>Last 24 Hours</option>
+      <option value="7d" {% if selected_time == '7d' %}selected{% endif %}>Last 7 Days</option>
+    </select>
+
+    <a href="{% url 'nvr:review' %}" class="btn btn--ghost btn--sm" title="Clear Filters">Reset</a>
+  </form>
+</div>
+
+<!-- ── Review Workspace Layout ───────────────────────────────────────────── -->
+<div class="nvr-review-layout">
+
+  <!-- Chronological Timeline Gallery -->
+  <div class="nvr-timeline-gallery">
+    {% if events %}
+      {% for event in events %}
+        <div class="nvr-event-card"
+             onclick='openDetailModal({{ event|safe|default:"{}" }})'>
+          <div class="nvr-event-card__thumbnail">
+            {% if event.snapshot_url %}
+              <img src="{{ event.snapshot_url }}"
+                   alt="Detection event {{ event.class }}"
+                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            {% endif %}
+            <div style="display:{% if event.snapshot_url %}none{% else %}flex{% endif %}; flex-direction:column; align-items:center; gap:6px; color:var(--outline);">
+              <span class="material-symbols-outlined" style="font-size:32px; opacity:0.3;">
+                {% if event.class == 'person' %}person
+                {% elif event.class == 'car' %}directions_car
+                {% elif event.class == 'bicycle' %}pedal_bike
+                {% elif event.class == 'truck' %}local_shipping
+                {% elif event.class == 'motorcycle' %}two_wheeler
+                {% else %}videocam{% endif %}
+              </span>
+              <span style="font-size:11px; font-family:var(--font-mono);">Frame #{{ event.frame_number }}</span>
+            </div>
+
+            <!-- Detection Class Badge -->
+            <div class="nvr-event-card__badge">
+              <span class="class-badge class--{{ event.class|lower }}">
+                <span class="class-dot"></span>
+                {{ event.class }}
+              </span>
+            </div>
+
+            <!-- Relative Time Tag -->
+            <div class="nvr-event-card__time-tag">
+              {{ event.relative_time }}
+            </div>
+          </div>
+
+          <div class="nvr-event-card__body">
+            <div class="nvr-event-card__header">
+              <span class="nvr-event-card__name">{{ event.class }}</span>
+              <span style="font-family:var(--font-mono); font-size:11px; color:var(--primary); font-weight:600;">
+                {{ event.confidence_pct }}
+              </span>
+            </div>
+
+            <div class="nvr-event-card__meta">
+              <span>{{ event.camera_name }}</span>
+              <span>{% if event.track_id != "-1" %}Track #{{ event.track_id }}{% else %}Untracked{% endif %}</span>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <span class="material-symbols-outlined">event_busy</span>
+        <h3 class="empty-state__title">No Events Match Selected Filters</h3>
+        <p class="empty-state__body">Try adjusting your camera or object class filters to view recorded detection events.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Right-Side Vertical Time Density Strip -->
+  <aside class="nvr-density-timeline">
+    <div class="nvr-density-timeline__title">Time Navigation</div>
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <a href="?time=1h" class="nvr-density-slot" style="text-decoration:none;">
+        <span>Past 1h</span>
+        <div class="nvr-density-bar" style="width: 45px;"></div>
+      </a>
+      <a href="?time=2h" class="nvr-density-slot" style="text-decoration:none;">
+        <span>1h - 2h</span>
+        <div class="nvr-density-bar" style="width: 32px;"></div>
+      </a>
+      <a href="?time=4h" class="nvr-density-slot" style="text-decoration:none;">
+        <span>2h - 4h</span>
+        <div class="nvr-density-bar" style="width: 60px;"></div>
+      </a>
+      <a href="?time=8h" class="nvr-density-slot" style="text-decoration:none;">
+        <span>4h - 8h</span>
+        <div class="nvr-density-bar" style="width: 20px;"></div>
+      </a>
+      <a href="?time=24h" class="nvr-density-slot" style="text-decoration:none;">
+        <span>8h - 24h</span>
+        <div class="nvr-density-bar" style="width: 80px;"></div>
+      </a>
+    </div>
+
+    <div style="margin-top: 20px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; color: var(--outline);">
+      Click any event card to view full bounding box &amp; trajectory metadata.
+    </div>
+  </aside>
+
+</div>
+{% endblock %}

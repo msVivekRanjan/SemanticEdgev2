@@ -1,0 +1,126 @@
+{% extends "nvr/base_nvr.html" %}
+{% load static %}
+
+{% block title %}System Settings — SemanticEdge NVR{% endblock %}
+
+{% block nvr_content %}
+<!-- ── Top Toolbar ────────────────────────────────────────────────────────── -->
+<div class="nvr-toolbar">
+  <div class="nvr-toolbar__title">
+    <span class="material-symbols-outlined" style="color: var(--primary);">settings</span>
+    <span>NVR &amp; AI Configuration</span>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: var(--space-lg); max-width: 980px;">
+
+  <!-- 1. Registered Cameras Management -->
+  <div class="card card--dark">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <div style="font-size: 15px; font-weight: 700; color: var(--on-surface);">Active Camera Feeds</div>
+      <span class="nvr-count-chip">{{ cameras|length }} Configured</span>
+    </div>
+
+    <!-- Camera List -->
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px;">
+      {% for cam in cameras %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background-color: var(--surface-container-low); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius);">
+          <div>
+            <div style="font-size: 14px; font-weight: 600; color: var(--on-surface); display: flex; align-items: center; gap: 8px;">
+              <span class="status-dot status-dot--online"></span>
+              <span>{{ cam.name }}</span>
+            </div>
+            <div style="font-family: var(--font-mono); font-size: 11px; color: var(--outline); margin-top: 2px;">
+              Source: <code>{{ cam.source_url }}</code> &bull; Tracking: {% if cam.tracker_enabled %}ByteTrack{% else %}Detect Only{% endif %}
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <a href="{% url 'nvr:camera_live' cam.id %}" class="btn btn--primary btn--sm">
+              <span class="material-symbols-outlined" style="font-size: 14px;">play_arrow</span>
+              Live Feed
+            </a>
+            <form method="post" onsubmit="return confirm('Remove camera {{ cam.name }}?');" style="display: inline;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_camera" />
+              <input type="hidden" name="camera_id" value="{{ cam.id }}" />
+              <button type="submit" class="btn btn--ghost btn--sm" style="color: var(--error);" title="Delete Camera">
+                <span class="material-symbols-outlined" style="font-size: 14px;">delete</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      {% empty %}
+        <p style="color: var(--outline); font-size: 13px;">No cameras registered yet.</p>
+      {% endfor %}
+    </div>
+
+    <!-- Register New Camera Form -->
+    <div style="padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
+      <h4 style="font-size: 13px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">
+        Add New Video Source
+      </h4>
+      <form method="post" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_camera" />
+
+        <div>
+          <label class="input-label">Camera Name</label>
+          <input type="text" name="name" class="nvr-search-input" placeholder="e.g. Front Gate or Secondary Webcam" style="width: 100%;" required />
+        </div>
+
+        <div>
+          <label class="input-label">Source URL / Device Index</label>
+          <input type="text" name="source_url" class="nvr-search-input" placeholder="0 (webcam) or rtsp://..." style="width: 100%;" required />
+        </div>
+
+        <div style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--on-surface-variant);">
+            <input type="checkbox" name="tracker_enabled" checked />
+            <span>Enable ByteTrack Multi-Object Tracking &amp; Trajectory History</span>
+          </label>
+
+          <button type="submit" class="btn btn--primary btn--sm">
+            <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+            Register Camera
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. AI Inference & Engine Parameters -->
+  <div class="card card--dark">
+    <div style="font-size: 15px; font-weight: 700; color: var(--on-surface); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      AI Inference Engine
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); font-size: 13px;">
+      <div>
+        <label class="input-label">Model Weights</label>
+        <input type="text" class="nvr-search-input" value="{{ yolo_model }}" readonly style="width: 100%; color: var(--outline);" />
+        <span style="font-size: 11px; color: var(--outline); margin-top: 4px; display: block;">Ultralytics YOLOv8 nano (COCO-80)</span>
+      </div>
+
+      <div>
+        <label class="input-label">Confidence Cutoff Threshold</label>
+        <input type="text" class="nvr-search-input" value="{{ yolo_conf }}" readonly style="width: 100%; color: var(--outline);" />
+        <span style="font-size: 11px; color: var(--outline); margin-top: 4px; display: block;">Filters detections below 40% confidence</span>
+      </div>
+
+      <div>
+        <label class="input-label">Active Compute Device</label>
+        <input type="text" class="nvr-search-input" value="{{ yolo_device }}" readonly style="width: 100%; color: var(--primary);" />
+        <span style="font-size: 11px; color: var(--outline); margin-top: 4px; display: block;">Configurable via YOLO_DEVICE in .env ('cpu', '0' for CUDA GPU)</span>
+      </div>
+
+      <div>
+        <label class="input-label">Object Class Filter</label>
+        <input type="text" class="nvr-search-input" value="person, bicycle, car, motorcycle, bus, truck" readonly style="width: 100%; color: var(--outline);" />
+        <span style="font-size: 11px; color: var(--outline); margin-top: 4px; display: block;">Filtered in detector.py (IDs: 0, 1, 2, 3, 5, 7)</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

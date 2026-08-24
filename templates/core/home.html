@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}SemanticEdge — Locally Processed AI NVR{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero Section ──────────────────────────────────────────────────────── -->
+<section class="section reveal" style="padding-top: calc(var(--nav-height) + var(--space-4xl));">
+  <div>
+    <!-- Eyebrow -->
+    <p class="eyebrow" style="margin-bottom: var(--space-3xl); margin-left: clamp(0px, 6vw, 80px);">
+      LOCALLY PROCESSED AI NVR
+    </p>
+
+    <!-- Giant headline -->
+    <h1 class="bleed-text" style="
+      font-size: clamp(52px, 10vw, 150px);
+      font-weight: 900;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      color: var(--on-surface);
+      margin-left: clamp(0px, 3vw, 40px);
+      margin-bottom: var(--space-3xl);
+    ">
+      Locally processed<br>
+      <span class="gradient-text">intelligent vision.</span>
+    </h1>
+
+    <!-- Body + High-Prominence Action Buttons -->
+    <div style="max-width: 520px; margin-left: auto; padding-right: var(--margin-mobile);">
+      <p style="
+        font-size: 16px;
+        font-weight: 300;
+        line-height: 1.8;
+        color: var(--on-surface-variant);
+        margin-bottom: var(--space-xl);
+      ">
+        SemanticEdge is an open-source NVR built around real-time AI object detection.
+        All processing is performed locally on your own hardware — your camera feeds
+        never leave your network. YOLOv8 inference, ByteTrack multi-object tracking,
+        and structured event logging, all in a single deployable system.
+      </p>
+
+      <!-- Prominent Buttons with Arrow Icons -->
+      <div style="display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: center;">
+        <a href="{% url 'accounts:login' %}" class="btn btn--primary btn--hero">
+          <span>Deploy Infrastructure</span>
+          <span class="material-symbols-outlined">arrow_forward</span>
+        </a>
+        <a href="{% url 'docs:list' %}" class="btn btn--ghost btn--hero">
+          <span>Read Documentation</span>
+          <span class="material-symbols-outlined">menu_book</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero Dashboard Preview Image -->
+  <div style="margin-top: 96px; position: relative;">
+    <div style="
+      aspect-ratio: 21 / 9;
+      width: 100%;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      background-color: var(--surface-container-lowest);
+    ">
+      <img
+        src="https://lh3.googleusercontent.com/aida/AEtjO1XU6ai8BeKoWM5M4lzMjBJdZnYbZDFz6wUO6dfjo9HV3m3solH6GVgSzzNcSCiwpKOALoT50jVFUvyEDP6r4NR21qaj6aHkAktYGDTL3O7n0Pytfla92UtSxg2W63kjhyxRMU9uHgXsCNU0-kDY1wdUj0sZu782BF5eatXtiHroSf7RT0X-k1Wo908wVCGWZNj69mpU8dSh_ijVUXYEi-NnpfIr-OCHh27CASajL2pEkM5L9pnDSFb6cs8"
+        alt="SemanticEdge NVR live detection dashboard"
+        class="grayscale-hover"
+        style="width: 100%; height: 100%; object-fit: cover;"
+        loading="eager"
+      />
+    </div>
+    <!-- Terminal overlay badge -->
+    <div class="terminal" style="
+      position: absolute;
+      bottom: -1px;
+      right: 0;
+      width: auto;
+      min-width: 260px;
+      border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
+      border-right: none;
+      border-bottom: none;
+    ">&gt; SemanticEdge NVR v1.0
+[✓] YOLOv8n loaded (Edge CPU)
+[✓] ByteTrack initialized
+[✓] Stream: /dev/video0
+[✓] Latency: 28ms/frame</div>
+  </div>
+</section>
+
+<!-- ── Capabilities / Feature Grid ──────────────────────────────────────── -->
+<section class="section reveal">
+  <div style="display:grid; grid-template-columns:1fr; gap: var(--gutter); margin-bottom: var(--space-4xl);">
+    <div>
+      <h2 style="font-size: clamp(36px, 5vw, 64px); font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: var(--on-surface); margin-bottom: var(--space-lg);">
+        Capabilities
+      </h2>
+    </div>
+    <div style="max-width: 480px; margin-left: auto;">
+      <p style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.8;">
+        The definitive NVR architecture for privacy-first automation — detection, tracking, logging, and live streaming all in one open-source system.
+      </p>
+    </div>
+  </div>
+
+  <!-- Feature rows -->
+  <div>
+
+    <!-- 01 Detection -->
+    <div class="feature-row">
+      <div>
+        <p class="eyebrow" style="margin-top: 8px;">01 / Detection</p>
+      </div>
+      <div>
+        <h3 style="font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--on-surface); margin-bottom: var(--space-md);">
+          Reduce false positives
+        </h3>
+        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.8;">
+          YOLOv8 runs on every frame and filters to six critical COCO object classes,
+          so motion events are evaluated against real edge AI — not crude pixel diffs.
+          Even on CPU, processing stays under 30ms per frame.
+        </p>
+      </div>
+      <div class="grayscale-hover" style="opacity: 0.7;">
+        <img
+          src="https://lh3.googleusercontent.com/aida/AEtjO1WvMPyr2D0KRqRTse7rb57bNCDRFrCvyklUlgEiGkdceifYfV_KyASCW9NJFrjYAgRTZ5VgkOiNLqsAukHqR7pcqJJ1MRKEzKNjuTdyTQFM0xFRmnFsRi5f3-Tz6vaLj9fjJvGdMwFb3cGlXA2ijVkrKgJ-RnxliK4szizfBKYQt8u-LEQ4mEO46YTMoczxJOU88n2wd10DlP3qursM5t-W9cuiK9tz-IWkqDQp9EdcXD8i5GfdiE3chgE"
+          alt="Object detection bounding boxes"
+          style="width: 100%; height: auto; object-fit: cover; border-radius: var(--radius);"
+        />
+      </div>
+    </div>
+
+    <!-- 02 Tracking -->
+    <div class="feature-row">
+      <div>
+        <p class="eyebrow" style="margin-top: 8px;">02 / Tracking</p>
+      </div>
+      <div>
+        <h3 style="font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--on-surface); margin-bottom: var(--space-md);">
+          Persistent identity
+        </h3>
+        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.8;">
+          ByteTrack assigns a unique ID to every detected object across frames.
+          Trajectories are drawn in real time, so you can see the exact path a person
+          walked, or trace how a vehicle moved through the scene.
+        </p>
+      </div>
+      <div class="terminal">
+&gt; Analyzing stream...
+[✓] Frame 1024 captured
+[✓] Object detected: person #3
+[✓] Confidence: 91%
+[✓] Trajectory: 28 points
+
+Processing time: 18ms</div>
+    </div>
+
+    <!-- 03 Logging -->
+    <div class="feature-row">
+      <div>
+        <p class="eyebrow" style="margin-top: 8px;">03 / Logging</p>
+      </div>
+      <div>
+        <h3 style="font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--on-surface); margin-bottom: var(--space-md);">
+          Structured event log
+        </h3>
+        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.8;">
+          Every detection is appended to a structured CSV log with timestamp, frame number,
+          track ID, class, confidence, bounding box coordinates, and line-crossing status —
+          ready for analytics or alerting pipelines.
+        </p>
+      </div>
+      <div>
+        <div class="terminal" style="font-size: 11px;">timestamp, track_id, class, conf
+2024-01-15T10:23:41, #3, person, 0.9134
+2024-01-15T10:23:41, #7, car, 0.8821
+2024-01-15T10:23:42, #3, person, 0.9271
+2024-01-15T10:23:42, #9, truck, 0.7643</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Supported Object Classes ──────────────────────────────────────────── -->
+<section class="section reveal">
+  <div style="text-align: center; margin-bottom: var(--space-4xl);">
+    <p class="eyebrow" style="margin-bottom: var(--space-md);">Detection scope</p>
+    <h2 style="font-size: clamp(32px, 4vw, 56px); font-weight: 900; letter-spacing: -0.03em; color: var(--on-surface);">
+      Six critical object classes
+    </h2>
+    <p style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); margin-top: var(--space-md); max-width: 50ch; margin-left: auto; margin-right: auto;">
+      SemanticEdge filters COCO detections to the six object classes that matter
+      most for physical security and perimeter monitoring.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); max-width: 800px; margin: 0 auto;">
+    {% with classes="person,bicycle,car,motorcycle,bus,truck" %}
+    <div class="card card--dark class--person" style="display: flex; align-items: center; gap: var(--space-md);">
+      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
+      <div>
+        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Person</p>
+        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 0</p>
+      </div>
+    </div>
+    <div class="card card--dark class--bicycle" style="display: flex; align-items: center; gap: var(--space-md);">
+      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
+      <div>
+        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Bicycle</p>
+        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 1</p>
+      </div>
+    </div>
+    <div class="card card--dark class--car" style="display: flex; align-items: center; gap: var(--space-md);">
+      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
+      <div>
+        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Car</p>
+        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 2</p>
+      </div>
+    </div>
+    <div class="card card--dark class--motorcycle" style="display: flex; align-items: center; gap: var(--space-md);">
+      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
+      <div>
+        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Motorcycle</p>
+        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 3</p>
+      </div>
+    </div>
+    <div class="card card--dark class--bus" style="display: flex; align-items: center; gap: var(--space-md);">
+      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
+      <div>
+        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Bus</p>
+        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 5</p>
+      </div>
+    </div>
+    <div class="card card--dark class--truck" style="display: flex; align-items: center; gap: var(--space-md);">
+      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
+      <div>
+        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Truck</p>
+        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 7</p>
+      </div>
+    </div>
+    {% endwith %}
+  </div>
+</section>
+
+<!-- ── How It Works ──────────────────────────────────────────────────────── -->
+<section class="section reveal">
+  <div style="text-align: center; margin-bottom: var(--space-4xl);">
+    <p class="eyebrow" style="margin-bottom: var(--space-md);">Architecture</p>
+    <h2 style="font-size: clamp(32px, 4vw, 56px); font-weight: 900; letter-spacing: -0.03em; color: var(--on-surface);">
+      How it works
+    </h2>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr; gap: 0; max-width: 920px; margin: 0 auto;">
+
+    <div style="display: flex; gap: var(--space-lg); padding: var(--space-2xl) 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <div style="width: 48px; flex-shrink: 0;">
+        <span class="mono" style="color: var(--primary); font-size: 20px; font-weight: 500;">01</span>
+      </div>
+      <div>
+        <h3 style="font-size: 20px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">Detect</h3>
+        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7;">
+          YOLOv8 runs inference on every captured frame, returning bounding boxes
+          and class labels filtered to the six target COCO classes.
+        </p>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: var(--space-lg); padding: var(--space-2xl) 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <div style="width: 48px; flex-shrink: 0;">
+        <span class="mono" style="color: var(--primary); font-size: 20px; font-weight: 500;">02</span>
+      </div>
+      <div>
+        <h3 style="font-size: 20px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">Track</h3>
+        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7;">
+          ByteTrack assigns and maintains unique IDs across frames, even through
+          brief occlusions. Trajectory history (last 30 points) is drawn on the frame.
+        </p>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: var(--space-lg); padding: var(--space-2xl) 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <div style="width: 48px; flex-shrink: 0;">
+        <span class="mono" style="color: var(--primary); font-size: 20px; font-weight: 500;">03</span>
+      </div>
+      <div>
+        <h3 style="font-size: 20px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">Log</h3>
+        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7;">
+          Every detection event is appended to a structured CSV log with full metadata —
+          timestamps, coordinates, class, confidence, and line-crossing status.
+        </p>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: var(--space-lg); padding: var(--space-2xl) 0;">
+      <div style="width: 48px; flex-shrink: 0;">
+        <span class="mono" style="color: var(--primary); font-size: 20px; font-weight: 500;">04</span>
+      </div>
+      <div>
+        <h3 style="font-size: 20px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">View</h3>
+        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7;">
+          Django streams annotated JPEG frames to your browser via MJPEG-over-HTTP —
+          no video library, no WebRTC complexity. The stats panel updates in real time.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── CTA Section with Action Buttons ──────────────────────────────────── -->
+<section class="section reveal" style="margin-bottom: var(--space-5xl);">
+  <div style="text-align: center; max-width: 700px; margin: 0 auto;">
+    <h2 style="
+      font-size: clamp(52px, 8vw, 92px);
+      font-weight: 900;
+      line-height: 0.92;
+      letter-spacing: -0.04em;
+      color: var(--on-surface);
+      margin-bottom: var(--space-2xl);
+    ">Ready to deploy?</h2>
+    <p style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); margin-bottom: var(--space-3xl); max-width: 42ch; margin-left: auto; margin-right: auto;">
+      Connect your cameras, start the edge AI pipeline, and monitor detections live on hardware you own.
+    </p>
+
+    <!-- Prominent Buttons with Forward Arrows -->
+    <div style="display: flex; flex-wrap: wrap; gap: var(--space-md); justify-content: center; align-items: center;">
+      <a href="{% url 'accounts:login' %}" class="btn btn--primary btn--hero">
+        <span>Start Monitoring</span>
+        <span class="material-symbols-outlined">arrow_forward</span>
+      </a>
+      <a href="{% url 'docs:list' %}" class="btn btn--ghost btn--hero">
+        <span>Read the Docs</span>
+        <span class="material-symbols-outlined">menu_book</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

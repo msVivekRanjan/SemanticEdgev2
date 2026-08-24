@@ -1,0 +1,125 @@
+{% extends "nvr/base_nvr.html" %}
+{% load static %}
+
+{% block title %}Export Evidence — SemanticEdge NVR{% endblock %}
+
+{% block nvr_content %}
+<!-- ── Top Toolbar ────────────────────────────────────────────────────────── -->
+<div class="nvr-toolbar">
+  <div class="nvr-toolbar__title">
+    <span class="material-symbols-outlined" style="color: var(--primary);">ios_share</span>
+    <span>Export Evidence</span>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: var(--space-lg);">
+  {% if cameras %}
+    <div style="display: grid; grid-template-columns: 1fr; gap: var(--space-lg);">
+      <!-- Exporter Form Card -->
+      <div class="card card--dark" style="max-width: 720px;">
+        <div class="stats-panel__title" style="display:flex; align-items:center; gap:8px;">
+          <span class="material-symbols-outlined" style="color:var(--primary); font-size:18px;">video_file</span>
+          <span>New Clip / Snapshot Extraction</span>
+        </div>
+
+        <form method="post" style="display: flex; flex-direction: column; gap: var(--space-md); margin-top: 14px;">
+          {% csrf_token %}
+
+          <!-- Camera Selection -->
+          <div>
+            <label class="input-label">Select Source Camera</label>
+            <select name="camera" class="nvr-select" style="width: 100%;">
+              {% for cam in cameras %}
+                <option value="{{ cam.id }}">📹 {{ cam.name }} ({{ cam.source_url }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Date & Time Range -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+            <div>
+              <label class="input-label">Start Time</label>
+              <input type="datetime-local" name="start_time" class="nvr-select" style="width: 100%;" required />
+            </div>
+            <div>
+              <label class="input-label">End Time</label>
+              <input type="datetime-local" name="end_time" class="nvr-select" style="width: 100%;" required />
+            </div>
+          </div>
+
+          <!-- Export Type Selector -->
+          <div>
+            <label class="input-label">Export Format</label>
+            <div style="display: flex; gap: var(--space-md);">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                <input type="radio" name="export_type" value="video" checked />
+                <span>Annotated MP4 Video (H.264 + BBoxes)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                <input type="radio" name="export_type" value="image" />
+                <span>Hi-Res JPEG Snapshot</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div style="margin-top: 8px;">
+            <button type="submit" class="btn btn--primary">
+              <span class="material-symbols-outlined" style="font-size: 18px;">download</span>
+              Queue Export Task
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Export History Table -->
+      <div class="card card--dark" style="padding: 0; overflow-x: auto;">
+        <div style="padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; font-weight: 700; color: var(--on-surface); text-transform: uppercase; letter-spacing: 0.05em;">
+          Export History &amp; Evidence Repository
+        </div>
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>File Name</th>
+              <th>Camera</th>
+              <th>Format</th>
+              <th>File Size</th>
+              <th>Exported On</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in export_history %}
+              <tr>
+                <td style="color: var(--on-surface); font-weight: 500;">{{ item.name }}</td>
+                <td>{{ item.camera }}</td>
+                <td>{{ item.format }}</td>
+                <td>{{ item.size }}</td>
+                <td>{{ item.created_at }}</td>
+                <td>
+                  <span style="color: var(--success); font-family: var(--font-mono); font-size: 11px;">
+                    ● {{ item.status }}
+                  </span>
+                </td>
+                <td>
+                  <button class="btn btn--ghost btn--sm" onclick="alert('Downloading evidence archive: {{ item.name }}')">
+                    <span class="material-symbols-outlined" style="font-size: 14px;">download</span>
+                    Download
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <span class="material-symbols-outlined">video_file</span>
+      <h3 class="empty-state__title">No Cameras Available for Export</h3>
+      <p class="empty-state__body">Configure a camera feed to record and extract video clips.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

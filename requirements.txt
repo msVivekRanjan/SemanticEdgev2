@@ -1,0 +1,16 @@
+# ── Edge AI & Tracking Pipeline ──────────────────────────────────────────────
+ultralytics>=8.0.0
+opencv-python>=4.9.0
+numpy>=1.25.0
+pandas>=2.2.0
+lapx>=0.5.2
+
+# ── Web Application Framework & Utilities ─────────────────────────────────────
+django>=4.2,<6.2
+python-decouple>=3.8
+Pillow>=10.0.0
+psutil>=5.9.0
+
+# ── Documentation & Markdown Engine ──────────────────────────────────────────
+markdown2>=2.4.0
+pygments>=2.17.0

@@ -1,0 +1,194 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}SemanticEdge NVR Console{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%236d5ef5'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='16' fill='white' text-anchor='middle'%3ESE%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="{% static 'css/design.css' %}" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body style="margin:0; padding:0; overflow:hidden; background-color:#0c0d0f;">
+
+  <div class="nvr-app-shell">
+
+    <!-- ── 1. Left Slim Navigation Sidebar ────────────────────────────────── -->
+    <aside class="nvr-sidebar" aria-label="NVR Main Navigation">
+      <!-- Logo / Icon -->
+      <a href="{% url 'nvr:live' %}" class="nvr-sidebar__logo" title="SemanticEdge NVR">
+        SE
+      </a>
+
+      <!-- Primary Navigation Tabs -->
+      <nav class="nvr-sidebar__nav">
+        <!-- Live -->
+        <a href="{% url 'nvr:live' %}"
+           class="nvr-sidebar__item {% if active_tab == 'live' %}nvr-sidebar__item--active{% endif %}"
+           title="Live Camera Monitor">
+          <span class="material-symbols-outlined">videocam</span>
+          <span>Live</span>
+        </a>
+
+        <!-- Review -->
+        <a href="{% url 'nvr:review' %}"
+           class="nvr-sidebar__item {% if active_tab == 'review' %}nvr-sidebar__item--active{% endif %}"
+           title="Chronological Event Review">
+          <span class="material-symbols-outlined">history</span>
+          <span>Review</span>
+        </a>
+
+        <!-- Explore -->
+        <a href="{% url 'nvr:explore' %}"
+           class="nvr-sidebar__item {% if active_tab == 'explore' %}nvr-sidebar__item--active{% endif %}"
+           title="Object-Class Detection Search">
+          <span class="material-symbols-outlined">travel_explore</span>
+          <span>Explore</span>
+        </a>
+
+        <!-- Export -->
+        <a href="{% url 'nvr:export' %}"
+           class="nvr-sidebar__item {% if active_tab == 'export' %}nvr-sidebar__item--active{% endif %}"
+           title="Export Video & Snapshot Evidence">
+          <span class="material-symbols-outlined">ios_share</span>
+          <span>Export</span>
+        </a>
+      </nav>
+
+      <!-- Bottom Settings & Account Navigation -->
+      <div class="nvr-sidebar__bottom">
+        <a href="{% url 'nvr:settings' %}"
+           class="nvr-sidebar__item {% if active_tab == 'settings' %}nvr-sidebar__item--active{% endif %}"
+           title="NVR & Camera Settings">
+          <span class="material-symbols-outlined">settings</span>
+          <span>Config</span>
+        </a>
+
+        <a href="/admin/" target="_blank" class="nvr-sidebar__item" title="Django Administration">
+          <span class="material-symbols-outlined">admin_panel_settings</span>
+          <span>Admin</span>
+        </a>
+
+        <form method="post" action="{% url 'accounts:logout' %}" style="width: 100%;">
+          {% csrf_token %}
+          <button type="submit" class="nvr-sidebar__item" style="width: 100%; background: none; border: none; cursor: pointer;" title="Sign Out">
+            <span class="material-symbols-outlined">logout</span>
+            <span>Exit</span>
+          </button>
+        </form>
+      </div>
+    </aside>
+
+    <!-- ── 2. Main Workspace Viewport ────────────────────────────────────── -->
+    <main class="nvr-main-workspace" id="nvr-workspace">
+      <!-- Django Alert Messages -->
+      {% if messages %}
+        <div style="padding: 12px 16px 0 16px;">
+          {% for message in messages %}
+            <div class="alert alert--{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% else %}info{% endif %}" style="margin: 0;">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="nvr-content-container">
+        {% block nvr_content %}{% endblock %}
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ── 3. Persistent Bottom Status Bar ──────────────────────────────────── -->
+  <footer class="nvr-status-bar" aria-label="System Hardware and Telemetry Status">
+    <!-- Left telemetry group -->
+    <div class="nvr-status-bar__group">
+      <div class="nvr-status-bar__item">
+        <span class="nvr-rec-dot" title="Recording Active"></span>
+        <strong>REC</strong>
+      </div>
+      <div class="nvr-status-bar__item">
+        <span>CPU:</span>
+        <strong id="bar-stat-cpu">12%</strong>
+      </div>
+      <div class="nvr-status-bar__item">
+        <span>MEM:</span>
+        <strong id="bar-stat-mem">34%</strong>
+      </div>
+      <div class="nvr-status-bar__item">
+        <span>ENGINE:</span>
+        <strong id="bar-stat-gpu" style="color: var(--primary);">CPU</strong>
+      </div>
+    </div>
+
+    <!-- Right telemetry group -->
+    <div class="nvr-status-bar__group">
+      <div class="nvr-status-bar__item">
+        <span>FEED FPS:</span>
+        <strong id="bar-stat-fps" style="color: var(--primary);">30.0 FPS</strong>
+      </div>
+      <div class="nvr-status-bar__item">
+        <span>CAMERAS:</span>
+        <strong id="bar-stat-cams">1 / 1</strong>
+      </div>
+      <div class="nvr-status-bar__item">
+        <span class="nvr-health-dot" title="System Status Optimal"></span>
+        <strong id="bar-stat-health" style="color: var(--success);">OPTIMAL</strong>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ── 4. Interactive Object Detail Modal ───────────────────────────────── -->
+  <div class="nvr-modal-backdrop" id="nvr-detail-modal" aria-hidden="true" role="dialog">
+    <div class="nvr-modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.08); background-color: var(--surface-container-low);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="material-symbols-outlined" style="color: var(--primary); font-size: 20px;">info</span>
+          <h3 id="modal-title" style="font-size: 15px; font-weight: 700; color: var(--on-surface); margin: 0;">Detection Details</h3>
+        </div>
+        <button id="modal-close-btn" style="background: none; border: none; color: var(--outline); cursor: pointer;" aria-label="Close modal">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div style="padding: 18px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <td style="padding: 8px 0; color: var(--on-surface-variant);">Timestamp:</td>
+            <td id="modal-time" style="padding: 8px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <td style="padding: 8px 0; color: var(--on-surface-variant);">Camera Source:</td>
+            <td id="modal-camera" style="padding: 8px 0; color: var(--on-surface); text-align: right;">-</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <td style="padding: 8px 0; color: var(--on-surface-variant);">Confidence Score:</td>
+            <td id="modal-conf" style="padding: 8px 0; color: var(--primary); font-family: var(--font-mono); font-weight: 600; text-align: right;">-</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <td style="padding: 8px 0; color: var(--on-surface-variant);">ByteTrack Track ID:</td>
+            <td id="modal-track" style="padding: 8px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <td style="padding: 8px 0; color: var(--on-surface-variant);">Bounding Box [x1, y1, x2, y2]:</td>
+            <td id="modal-bbox" style="padding: 8px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right; font-size: 12px;">-</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: var(--on-surface-variant);">Line Crossing Status:</td>
+            <td id="modal-line" style="padding: 8px 0; color: var(--tertiary); font-family: var(--font-mono); text-align: right;">none</td>
+          </tr>
+        </table>
+      </div>
+
+      <div style="padding: 12px 18px; background-color: var(--surface-container-low); display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08);">
+        <a href="{% url 'nvr:review' %}" class="btn btn--primary btn--sm">View in Event Review</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="{% static 'js/main.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+
+</body>
+</html>
