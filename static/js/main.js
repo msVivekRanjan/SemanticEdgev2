@@ -100,7 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     window.openDetailModalFromEl = function(el) {
       if (!el) return;
-      const ds = el.dataset || {};
+      const target = el.closest('[data-event-id]') || el;
+      const ds = target.dataset || {};
       let bbox = [];
       if (ds.bboxX1 !== undefined && ds.bboxX1 !== '') {
         bbox = [
@@ -112,9 +113,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Backward-compatible fallback to data-event if present
-      if (!ds.eventId && el.getAttribute('data-event')) {
+      if (!ds.eventId && target.getAttribute('data-event')) {
         try {
-          const d = JSON.parse(el.getAttribute('data-event'));
+          const d = JSON.parse(target.getAttribute('data-event'));
           _openModal(d);
           return;
         } catch (_) {}
@@ -127,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
         camera_name: ds.camera || '—',
         confidence_pct: ds.confidence || '—',
         track_id: ds.track || 'None',
+        frame_number: ds.frame || '—',
         snapshot_url: ds.snapshot || '',
         description: ds.desc || '',
         bbox: bbox,
@@ -148,17 +150,26 @@ document.addEventListener('DOMContentLoaded', () => {
       // Title
       const titleEl = document.getElementById('modal-title');
       const cls = (data.class || 'object');
-      if (titleEl) titleEl.textContent = `${cls.charAt(0).toUpperCase() + cls.slice(1)} Detection — Event #${data.id || '?'}`;
+      if (titleEl) titleEl.textContent = `${cls.charAt(0).toUpperCase() + cls.slice(1)} Detection Evidence — Event #${data.id || '?'}`;
 
       // Class badge
       const badgeEl = document.getElementById('modal-class-badge');
       if (badgeEl) badgeEl.textContent = cls.toUpperCase();
 
-      // Snapshot image
+      // Snapshot image preview with loading and error handling
       const imgEl   = document.getElementById('modal-snapshot-img');
       const noImgEl = document.getElementById('modal-no-img');
       const snap    = (data.snapshot_url || '').trim();
+
       if (snap && snap !== 'None' && snap !== '') {
+        imgEl.onload = () => {
+          imgEl.style.display = 'block';
+          if (noImgEl) noImgEl.style.display = 'none';
+        };
+        imgEl.onerror = () => {
+          imgEl.style.display = 'none';
+          if (noImgEl) noImgEl.style.display = 'flex';
+        };
         imgEl.src = snap;
         imgEl.style.display = 'block';
         if (noImgEl) noImgEl.style.display = 'none';
@@ -167,16 +178,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (noImgEl) noImgEl.style.display = 'flex';
       }
 
-      // Metadata
-      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      set('modal-time',   data.timestamp    || 'N/A');
-      set('modal-camera', data.camera_name  || '—');
-      set('modal-conf',   data.confidence_pct || '—');
-      const tid = parseInt(data.track_id);
-      set('modal-track',  (!isNaN(tid) && tid > 0) ? `#${tid}` : 'None');
+      // Compute geometric dimensions from bounding box
       const bbox = Array.isArray(data.bbox) ? data.bbox : [];
-      set('modal-bbox',   bbox.length ? `[${bbox.map(v => Math.round(v)).join(', ')}]` : 'N/A');
-      set('modal-line',   data.line_crossing_status || 'none');
+      let dimsStr = '—';
+      let centerStr = '—';
+      if (bbox.length >= 4 && (bbox[0] !== 0 || bbox[2] !== 0)) {
+        const w = Math.round(Math.abs(bbox[2] - bbox[0]));
+        const h = Math.round(Math.abs(bbox[3] - bbox[1]));
+        dimsStr = `${w} × ${h} px`;
+        const cx = Math.round((bbox[0] + bbox[2]) / 2);
+        const cy = Math.round((bbox[1] + bbox[3]) / 2);
+        centerStr = `(${cx}, ${cy})`;
+      }
+
+      // Metadata setters
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('modal-time',     data.timestamp      || 'N/A');
+      set('modal-camera',   data.camera_name    || '—');
+      set('modal-event-id', data.id ? `#${data.id}` : '—');
+      set('modal-frame',    data.frame_number ? `Frame #${data.frame_number}` : '—');
+      set('modal-conf',     data.confidence_pct || '—');
+      const tid = parseInt(data.track_id);
+      set('modal-track',    (!isNaN(tid) && tid > 0) ? `#${tid}` : 'Untracked / None');
+      set('modal-bbox',     bbox.length >= 4 ? `[${bbox.map(v => Math.round(v)).join(', ')}]` : 'N/A');
+      set('modal-dims',     dimsStr);
+      set('modal-center',   centerStr);
+      set('modal-line',     data.line_crossing_status || 'none');
 
       // Description textarea
       const descInput = document.getElementById('modal-desc-input');

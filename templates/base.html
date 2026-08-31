@@ -11,6 +11,7 @@
     content="{% block meta_description %}SemanticEdge is an open-source NVR built around real-time AI object detection and custom edge vision services.{% endblock %}" />
 
   <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}" />
   <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}" />
 
   <!-- Design system CSS -->
@@ -28,9 +29,10 @@
   <nav class="nav" aria-label="Main navigation">
     <div class="nav__inner">
 
-      <!-- Logo / wordmark with modern AI reticle icon -->
+      <!-- Logo / wordmark with uploaded modern layered isometric icon -->
       <a href="{% url 'core:home' %}" class="nav__logo" style="display: flex; align-items: center; gap: 10px;">
-        <img src="{% static 'img/logo.svg' %}" alt="SemanticEdge Logo" style="width: 26px; height: 26px;" />
+        <img src="{% static 'img/logo.png' %}" alt="SemanticEdge Logo"
+          style="width: 28px; height: 28px; object-fit: contain;" />
         <span>SemanticEdge</span>
       </a>
 
@@ -40,9 +42,9 @@
           class="nav__link {% if request.resolver_match.url_name == 'home' %}nav__link--active{% endif %}"
           role="listitem">Home</a>
         <a href="{% url 'core:home' %}#services" class="nav__link" role="listitem">Services</a>
-        <a href="{% url 'core:book_demo' %}"
+        <!-- <a href="{% url 'core:book_demo' %}"
           class="nav__link {% if request.resolver_match.url_name == 'book_demo' %}nav__link--active{% endif %}"
-          role="listitem">Book a Demo</a>
+          role="listitem">Book a Demo</a> -->
         <a href="{% url 'docs:list' %}"
           class="nav__link {% if request.resolver_match.app_name == 'docs' %}nav__link--active{% endif %}"
           role="listitem">Docs</a>
@@ -128,37 +130,84 @@
     {% block content %}{% endblock %}
   </main>
 
-  <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+  <!-- ── Modernized Global Footer ────────────────────────────────────────── -->
   <footer class="footer">
     <div class="footer__grid">
+
+      <!-- Column 1: Brand & Status -->
       <div class="footer__brand">
-        <a href="{% url 'core:home' %}" class="footer__logo">SemanticEdge</a>
-        <p class="footer__tagline">© 2024 SemanticEdge Technologies. Locally processed edge AI.</p>
-      </div>
-      <div>
-        <h4 class="footer__col-title">Services</h4>
-        <div class="footer__links">
-          <a href="{% url 'core:home' %}#services" class="footer__link">Vehicles & People (Traffic)</a>
-          <a href="{% url 'core:home' %}#services" class="footer__link">Face Recognition (Colleges)</a>
-          <a href="{% url 'core:home' %}#services" class="footer__link">Industrial Object Counter</a>
-          <a href="{% url 'core:book_demo' %}" class="footer__link">Book a Demo</a>
+        <a href="{% url 'core:home' %}" class="footer__logo">
+          <img src="{% static 'img/logo.png' %}" alt="SemanticEdge Logo"
+            style="width: 28px; height: 28px; object-fit: contain;" />
+          <span>SemanticEdge</span>
+        </a>
+        <p class="footer__tagline">
+          Enterprise Edge AI Network Video Recorder. Local zero-latency neural vision inference, multi-camera tracking,
+          and bespoke AI telemetry.
+        </p>
+        <div class="footer__status-badge">
+          <span class="footer__status-dot"></span>
+          <span>Edge Engine Operational</span>
         </div>
       </div>
+
+      <!-- Column 2: Edge Services -->
       <div>
-        <h4 class="footer__col-title">Resources</h4>
+        <h4 class="footer__col-title">
+          <span class="material-symbols-outlined" style="font-size: 14px; color: var(--primary);">smart_toy</span>
+          <span>Edge AI Services</span>
+        </h4>
         <div class="footer__links">
-          <a href="https://github.com/msVivekRanjan/SemanticEdgev2" class="footer__link" target="_blank"
-            rel="noopener">GitHub Repository</a>
+          <a href="{% url 'core:home' %}#services" class="footer__link">Vehicles & Traffic Analytics</a>
+          <a href="{% url 'core:home' %}#services" class="footer__link">Biometric Face Recognition</a>
+          <a href="{% url 'core:home' %}#services" class="footer__link">Industrial Conveyor Counter</a>
+          <a href="{% url 'core:book_demo' %}" class="footer__link">Custom Edge Vision Deployments</a>
+        </div>
+      </div>
+
+      <!-- Column 3: Documentation & Developers -->
+      <div>
+        <h4 class="footer__col-title">
+          <span class="material-symbols-outlined" style="font-size: 14px; color: var(--primary);">menu_book</span>
+          <span>Documentation</span>
+        </h4>
+        <div class="footer__links">
           <a href="{% url 'docs:list' %}" class="footer__link">Getting Started Guide</a>
-          <a href="{% url 'accounts:login' %}" class="footer__link">NVR Console</a>
+          <a href="{% url 'docs:detail' slug='camera-configuration' %}" class="footer__link">Camera RTSP Setup</a>
+          <a href="{% url 'docs:detail' slug='supported-classes' %}" class="footer__link">Supported 80 COCO Classes</a>
+          <a href="https://github.com/msVivekRanjan/SemanticEdgev2" class="footer__link" target="_blank"
+            rel="noopener">GitHub Open-Source Repo</a>
         </div>
       </div>
+
+      <!-- Column 4: Enterprise & Support -->
       <div>
-        <h4 class="footer__col-title">Company</h4>
+        <h4 class="footer__col-title">
+          <span class="material-symbols-outlined" style="font-size: 14px; color: var(--primary);">business</span>
+          <span>Enterprise Solutions</span>
+        </h4>
         <div class="footer__links">
-          <a href="{% url 'core:book_demo' %}" class="footer__link">Contact Solutions Team</a>
-          <a href="#" class="footer__link">Privacy & On-Prem Policy</a>
+          <a href="{% url 'core:book_demo' %}" class="footer__link">Book Private Solution Demo</a>
+          <a href="{% url 'accounts:login' %}" class="footer__link">NVR Operations Console</a>
+          <a href="/admin/" class="footer__link" target="_blank">Django Admin Panel</a>
+          <a href="{% url 'core:home' %}#features" class="footer__link">On-Premises Privacy Policy</a>
         </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Bar: Copyright & Attribution -->
+    <div class="footer__bottom-bar">
+      <div>
+        © {% now "Y" %} SemanticEdge Technologies. Built with Django, YOLOv8 &amp; ByteTrack.
+      </div>
+      <div class="footer__bottom-links">
+        <a href="{% url 'docs:list' %}" class="footer__link" style="font-size: 12px;">Docs</a>
+        <a href="{% url 'core:book_demo' %}" class="footer__link" style="font-size: 12px;">Contact Solutions</a>
+        <a href="https://github.com/msVivekRanjan/SemanticEdgev2" target="_blank" rel="noopener" class="footer__link"
+          style="font-size: 12px;">GitHub</a>
+        <a href="#" class="footer__link" style="font-size: 12px;"
+          onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;">Top ↑</a>
       </div>
     </div>
   </footer>

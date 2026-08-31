@@ -147,6 +147,7 @@
                data-camera="{{ item.camera_name }}"
                data-confidence="{{ item.confidence_pct }}"
                data-track="{{ item.track_id }}"
+               data-frame="{{ item.frame_number|default:'1' }}"
                data-snapshot="{{ item.snapshot_url|default:'' }}"
                data-desc="{{ item.description|default:'' }}"
                data-bbox-x1="{{ item.bbox.0|default:0 }}"

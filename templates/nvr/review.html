@@ -60,6 +60,7 @@
              data-camera="{{ event.camera_name }}"
              data-confidence="{{ event.confidence_pct }}"
              data-track="{{ event.track_id }}"
+             data-frame="{{ event.frame_number|default:'1' }}"
              data-snapshot="{{ event.snapshot_url|default:'' }}"
              data-desc="{{ event.description|default:'' }}"
              data-bbox-x1="{{ event.bbox.0|default:0 }}"

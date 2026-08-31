@@ -11,7 +11,7 @@
     <!-- Brand Header -->
     <div style="margin-bottom: var(--space-xl); text-align: center;">
       <div style="display: flex; justify-content: center; margin-bottom: 12px;">
-        <img src="{% static 'img/logo.svg' %}" alt="SemanticEdge Logo" style="width: 48px; height: 48px;" />
+        <img src="{% static 'img/logo.png' %}" alt="SemanticEdge Logo" style="width: 52px; height: 52px; object-fit: contain;" />
       </div>
       <h1 class="auth-card__logo" style="margin-bottom: 4px;">SemanticEdge</h1>
       <p class="auth-card__subtitle">Sign in to access your NVR monitoring console</p>
@@ -62,15 +62,17 @@
     </form>
 
     <!-- Register New User Action -->
-    <div style="margin-top: var(--space-lg); text-align: center; font-size: 13px; color: var(--on-surface-variant); padding-top: var(--space-sm);">
+    <div
+      style="margin-top: var(--space-lg); text-align: center; font-size: 13px; color: var(--on-surface-variant); padding-top: var(--space-sm);">
       Don't have an account?
-      <a href="{% url 'accounts:register' %}" class="text-link" style="font-weight: 600; margin-left: 4px; color: var(--primary);">
+      <a href="{% url 'accounts:register' %}" class="text-link"
+        style="font-weight: 600; margin-left: 4px; color: var(--primary);">
         Register new user
       </a>
     </div>
 
     <!-- Quick Credentials Helper for Demo -->
-    <div
+    <!-- <div
       style="margin-top: var(--space-lg); padding: 12px 14px; background-color: var(--surface-container-lowest); border: 1px solid var(--border-subtle); border-radius: var(--radius); font-size: 12px;">
       <div style="font-weight: 600; color: var(--primary); margin-bottom: 4px; font-family: var(--font-mono);">
         DEMO CREDENTIALS
@@ -79,7 +81,7 @@
         Admin: <code>admin</code> / <code>admin123</code><br>
         Standard: <code>demo</code> / <code>demo123</code>
       </div>
-    </div>
+    </div> -->
 
     <!-- Footer Links -->
     <div

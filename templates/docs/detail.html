@@ -5,111 +5,263 @@
 {% block meta_description %}{{ page.title }} | SemanticEdge NVR documentation.{% endblock %}
 
 {% block extra_head %}
-{# Pygments syntax highlighting (monokai-ish dark theme) #}
+{# Pygments syntax highlighting — Monokai dark theme #}
 <style>
-/* Pygments "monokai" theme override for dark design system */
-.highlight .hll { background-color: rgba(255,255,255,0.05) }
-.highlight .c  { color: #75715e } /* Comment */
-.highlight .err { color: #f92672 }
-.highlight .k  { color: #66d9ef; font-weight: bold }
-.highlight .l  { color: #ae81ff }
-.highlight .n  { color: var(--on-surface) }
-.highlight .o  { color: #f92672 }
-.highlight .p  { color: var(--on-surface-variant) }
-.highlight .cm { color: #75715e }
-.highlight .cp { color: #75715e }
-.highlight .c1 { color: #75715e; font-style: italic }
-.highlight .cs { color: #75715e; font-style: italic }
-.highlight .kc { color: #66d9ef; font-weight: bold }
-.highlight .kd { color: #66d9ef; font-weight: bold }
-.highlight .kn { color: #f92672; font-weight: bold }
-.highlight .kp { color: #66d9ef }
-.highlight .kr { color: #66d9ef; font-weight: bold }
-.highlight .kt { color: #66d9ef }
-.highlight .ld { color: #e6db74 }
-.highlight .m  { color: #ae81ff }
-.highlight .s  { color: #e6db74 }
-.highlight .na { color: #a6e22e }
-.highlight .nb { color: #f8f8f2 }
-.highlight .nc { color: #a6e22e; font-weight: bold }
-.highlight .no { color: #66d9ef }
-.highlight .nd { color: #a6e22e }
-.highlight .ni { color: #f8f8f2; font-weight: bold }
-.highlight .ne { color: #a6e22e; font-weight: bold }
-.highlight .nf { color: #a6e22e }
-.highlight .nl { color: #f8f8f2; font-weight: bold }
-.highlight .nn { color: #f8f8f2 }
-.highlight .nx { color: #a6e22e }
-.highlight .py { color: #f8f8f2 }
-.highlight .nt { color: #f92672; font-weight: bold }
-.highlight .nv { color: #f8f8f2 }
-.highlight .vc { color: #f8f8f2 }
-.highlight .vg { color: #f8f8f2 }
-.highlight .vi { color: #f8f8f2 }
-.highlight .il { color: #ae81ff }
-.highlight .mi { color: #ae81ff }
-.highlight .mf { color: #ae81ff }
-.highlight .mh { color: #ae81ff }
-.highlight .mo { color: #ae81ff }
-.highlight .sb { color: #e6db74 }
-.highlight .sc { color: #e6db74 }
-.highlight .sd { color: #e6db74; font-style: italic }
-.highlight .s2 { color: #e6db74 }
-.highlight .se { color: #ae81ff; font-weight: bold }
-.highlight .sh { color: #e6db74 }
-.highlight .si { color: #e6db74; font-weight: bold }
-.highlight .sx { color: #e6db74 }
-.highlight .sr { color: #e6db74 }
-.highlight .s1 { color: #e6db74 }
-.highlight .ss { color: #e6db74 }
-.highlight .bp { color: #f8f8f2 }
-.highlight .ow { color: #f92672; font-weight: bold }
-.highlight .w  { color: #f8f8f2 }
+  .highlight .hll { background-color: rgba(255,255,255,0.05) }
+  .highlight .c   { color: #75715e }
+  .highlight .err { color: #f92672 }
+  .highlight .k   { color: #66d9ef; font-weight: bold }
+  .highlight .l   { color: #ae81ff }
+  .highlight .n   { color: var(--on-surface) }
+  .highlight .o   { color: #f92672 }
+  .highlight .p   { color: var(--on-surface-variant) }
+  .highlight .cm  { color: #75715e }
+  .highlight .cp  { color: #75715e }
+  .highlight .c1  { color: #75715e; font-style: italic }
+  .highlight .cs  { color: #75715e; font-style: italic }
+  .highlight .kc  { color: #66d9ef; font-weight: bold }
+  .highlight .kd  { color: #66d9ef; font-weight: bold }
+  .highlight .kn  { color: #f92672; font-weight: bold }
+  .highlight .kp  { color: #66d9ef }
+  .highlight .kr  { color: #66d9ef; font-weight: bold }
+  .highlight .kt  { color: #66d9ef }
+  .highlight .ld  { color: #e6db74 }
+  .highlight .m   { color: #ae81ff }
+  .highlight .s   { color: #e6db74 }
+  .highlight .na  { color: #a6e22e }
+  .highlight .nb  { color: #f8f8f2 }
+  .highlight .nc  { color: #a6e22e; font-weight: bold }
+  .highlight .no  { color: #66d9ef }
+  .highlight .nd  { color: #a6e22e }
+  .highlight .ni  { color: #f8f8f2; font-weight: bold }
+  .highlight .ne  { color: #a6e22e; font-weight: bold }
+  .highlight .nf  { color: #a6e22e }
+  .highlight .nl  { color: #f8f8f2; font-weight: bold }
+  .highlight .nn  { color: #f8f8f2 }
+  .highlight .nx  { color: #a6e22e }
+  .highlight .py  { color: #f8f8f2 }
+  .highlight .nt  { color: #f92672; font-weight: bold }
+  .highlight .nv  { color: #f8f8f2 }
+  .highlight .vc  { color: #f8f8f2 }
+  .highlight .vg  { color: #f8f8f2 }
+  .highlight .vi  { color: #f8f8f2 }
+  .highlight .il  { color: #ae81ff }
+  .highlight .mi  { color: #ae81ff }
+  .highlight .mf  { color: #ae81ff }
+  .highlight .mh  { color: #ae81ff }
+  .highlight .mo  { color: #ae81ff }
+  .highlight .sb  { color: #e6db74 }
+  .highlight .sc  { color: #e6db74 }
+  .highlight .sd  { color: #e6db74; font-style: italic }
+  .highlight .s2  { color: #e6db74 }
+  .highlight .se  { color: #ae81ff; font-weight: bold }
+  .highlight .sh  { color: #e6db74 }
+  .highlight .si  { color: #e6db74; font-weight: bold }
+  .highlight .sx  { color: #e6db74 }
+  .highlight .sr  { color: #e6db74 }
+  .highlight .s1  { color: #e6db74 }
+  .highlight .ss  { color: #e6db74 }
+  .highlight .bp  { color: #f8f8f2 }
+  .highlight .ow  { color: #f92672; font-weight: bold }
+  .highlight .w   { color: #f8f8f2 }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="docs-layout">
 
-  <!-- Sidebar -->
+  <!-- ── 1. Left Sidebar ─────────────────────────────────────────────────── -->
   <aside class="docs-sidebar" aria-label="Documentation navigation">
-    <div class="sidebar-nav">
+    <nav class="sidebar-nav">
       {% for group in sidebar_groups %}
-        <p class="sidebar-nav__category">{{ group.category }}</p>
-        {% for doc_page in group.pages %}
-          <a href="{{ doc_page.get_absolute_url }}"
-             class="sidebar-nav__link {% if doc_page.slug == page.slug %}sidebar-nav__link--active{% endif %}">
-            {{ doc_page.title }}
-          </a>
-        {% endfor %}
+      <p class="sidebar-nav__category">{{ group.category }}</p>
+      {% for doc_page in group.pages %}
+      <a href="{{ doc_page.get_absolute_url }}"
+        class="sidebar-nav__link {% if doc_page.slug == page.slug %}sidebar-nav__link--active{% endif %}">
+        {{ doc_page.title }}
+      </a>
       {% endfor %}
-    </div>
+      {% endfor %}
+    </nav>
   </aside>
 
-  <!-- Content -->
+  <!-- ── 2. Center Content ──────────────────────────────────────────────── -->
   <article class="docs-content">
-    <!-- Page header -->
-    <div style="margin-bottom: var(--space-2xl); padding-bottom: var(--space-2xl); border-bottom: 1px solid rgba(71,69,85,0.2);">
-      <p class="eyebrow" style="margin-bottom: var(--space-sm);">{{ page.category }}</p>
-      <h1 style="font-size: clamp(28px, 4vw, 44px); font-weight: 600; letter-spacing: -0.02em; color: var(--on-surface); margin-bottom: var(--space-sm);">
-        {{ page.title }}
-      </h1>
-      <p class="mono" style="color: var(--outline);">
-        Last updated: {{ page.updated_at|date:"N j, Y" }}
-      </p>
-    </div>
 
-    <!-- Rendered Markdown -->
-    <div class="markdown-body">
+    <!-- Breadcrumb -->
+    <nav class="docs-breadcrumb" aria-label="Breadcrumb">
+      <a href="{% url 'core:home' %}">Home</a>
+      <span class="docs-breadcrumb__sep">›</span>
+      <a href="{% url 'docs:list' %}">Documentation</a>
+      <span class="docs-breadcrumb__sep">›</span>
+      <span class="docs-breadcrumb__current">{{ page.category }}</span>
+    </nav>
+
+    <!-- Page Header -->
+    <header class="docs-page-header">
+      <p class="docs-page-header__eyebrow">{{ page.category }}</p>
+      <div class="docs-page-header__meta">
+        <div style="flex: 1; min-width: 0;">
+          <h1 class="docs-page-header__title">{{ page.title }}</h1>
+          <p class="docs-page-header__updated">Updated {{ page.updated_at|date:"N j, Y" }}</p>
+        </div>
+        <a href="{% url 'docs:download_markdown' slug=page.slug %}" class="docs-download-btn"
+          title="Download this page as Markdown" download="{{ page.slug }}.md">
+          <span class="material-symbols-outlined">download</span>
+          <span>Download .MD</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Markdown Body -->
+    <div class="markdown-body" id="docs-markdown-body">
       {{ content_html|safe }}
     </div>
 
-    <!-- Page navigation (prev/next could be added here in a later iteration) -->
-    <div style="margin-top: var(--space-4xl); padding-top: var(--space-2xl); border-top: 1px solid rgba(71,69,85,0.2);">
-      <a href="{% url 'docs:list' %}" class="text-link text-link--muted">← All Documentation</a>
-    </div>
+    <!-- ── 3. Prev / Next Navigation ──────────────────────────────────── -->
+    <nav class="docs-nav-section" aria-label="Page navigation">
+      <div class="docs-nav-grid">
+
+        {% if prev_page %}
+        <a href="{{ prev_page.get_absolute_url }}" class="docs-nav-card docs-nav-card--prev">
+          <div class="docs-nav-card__label">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span>Previous Document</span>
+          </div>
+          <div class="docs-nav-card__title">{{ prev_page.title }}</div>
+          <div class="docs-nav-card__category">{{ prev_page.category }}</div>
+        </a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        {% if next_page %}
+        <a href="{{ next_page.get_absolute_url }}" class="docs-nav-card docs-nav-card--next" style="text-align: right;">
+          <div class="docs-nav-card__label" style="justify-content: flex-end;">
+            <span>Next Document</span>
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </div>
+          <div class="docs-nav-card__title">{{ next_page.title }}</div>
+          <div class="docs-nav-card__category">{{ next_page.category }}</div>
+        </a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+      </div>
+
+      <div class="docs-nav-footer">
+        <a href="{% url 'docs:list' %}">
+          <span class="material-symbols-outlined" style="font-size: 14px;">menu_book</span>
+          <span>All documentation</span>
+        </a>
+      </div>
+    </nav>
 
   </article>
 
+  <!-- ── 4. Right TOC ───────────────────────────────────────────────────── -->
+  <aside class="docs-toc" id="docs-toc" aria-label="On this page">
+    <div class="docs-toc__inner">
+
+      <div class="docs-toc__header">
+        <span class="material-symbols-outlined">format_list_bulleted</span>
+        <span>On This Page</span>
+      </div>
+
+      <nav class="docs-toc__nav" id="docs-toc-nav">
+        {% if toc %}
+        {% for item in toc %}
+        <a href="#{{ item.id }}"
+          class="docs-toc__link docs-toc__link--level-{{ item.level }}"
+          data-heading-id="{{ item.id }}">
+          {{ item.text }}
+        </a>
+        {% endfor %}
+        {% else %}
+        <p style="font-size: 12px; color: var(--outline); font-style: italic; padding: 4px 8px;">
+          No subsections on this page
+        </p>
+        {% endif %}
+      </nav>
+
+      <div class="docs-toc__actions">
+        <a href="#" class="docs-toc__action-link"
+          onclick="window.scrollTo({top: 0, behavior: 'smooth'}); return false;">
+          <span class="material-symbols-outlined">vertical_align_top</span>
+          <span>Scroll to top</span>
+        </a>
+        <a href="{% url 'docs:download_markdown' slug=page.slug %}"
+          class="docs-toc__action-link" download="{{ page.slug }}.md">
+          <span class="material-symbols-outlined">file_download</span>
+          <span>Export Markdown</span>
+        </a>
+      </div>
+
+    </div>
+  </aside>
+
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const tocLinks = document.querySelectorAll('.docs-toc__link');
+    const headings = Array.from(
+      document.querySelectorAll('.markdown-body h2, .markdown-body h3')
+    );
+
+    if (headings.length === 0 || tocLinks.length === 0) return;
+
+    const navHeightPx = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--nav-height') || '76',
+      10
+    );
+    const NAV_OFFSET = navHeightPx + 28;
+
+    // ── Smooth scroll on TOC click ─────────────────────────────────────────
+    tocLinks.forEach(link => {
+      link.addEventListener('click', e => {
+        const id = link.getAttribute('href')?.replace('#', '');
+        const el = id ? document.getElementById(id) : null;
+        if (!el) return;
+        e.preventDefault();
+        const top = el.getBoundingClientRect().top + window.pageYOffset - NAV_OFFSET;
+        window.scrollTo({ top, behavior: 'smooth' });
+        history.pushState(null, '', `#${id}`);
+      });
+    });
+
+    // ── Active-section scroll-spy ─────────────────────────────────────────
+    function updateActive() {
+      const scrollY = window.pageYOffset;
+      let activeId = null;
+
+      for (const h of headings) {
+        const top = h.getBoundingClientRect().top + scrollY - NAV_OFFSET - 12;
+        if (scrollY >= top) {
+          activeId = h.id;
+        } else {
+          break;
+        }
+      }
+
+      if (!activeId && headings.length > 0) {
+        activeId = headings[0].id;
+      }
+
+      tocLinks.forEach(link => {
+        link.classList.toggle(
+          'docs-toc__link--active',
+          link.getAttribute('href') === `#${activeId}`
+        );
+      });
+    }
+
+    window.addEventListener('scroll', updateActive, { passive: true });
+    updateActive();
+  });
+</script>
+{% endblock %}
+
