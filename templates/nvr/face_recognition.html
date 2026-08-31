@@ -1,0 +1,196 @@
+{% extends "nvr/base_nvr.html" %}
+{% load static %}
+
+{% block title %}Face Recognition & Attendance — SemanticEdge NVR{% endblock %}
+
+{% block nvr_content %}
+{% if not has_service_access %}
+  {% include "nvr/service_locked.html" %}
+{% else %}
+
+<!-- ── Top Toolbar ────────────────────────────────────────────────────────── -->
+<div class="nvr-toolbar">
+  <div class="nvr-toolbar__title">
+    <span class="material-symbols-outlined" style="color: var(--tertiary);">face</span>
+    <span>Face Recognition & Attendance</span>
+    {% if selected_camera %}
+      <span style="font-size: 13px; font-weight: 400; color: var(--outline); font-family: var(--font-mono); margin-left: 8px;">
+        [{{ selected_camera.name }}]
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="nvr-filter-group">
+    <!-- Camera Switcher -->
+    <form method="get" id="camera-select-form" style="display: flex; gap: 8px;">
+      <select name="camera" class="nvr-select" onchange="this.form.submit()">
+        {% for cam in cameras %}
+          <option value="{{ cam.id }}" {% if selected_camera.id == cam.id %}selected{% endif %}>
+            📹 {{ cam.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+</div>
+
+<!-- ── Main Face Recognition Grid ─────────────────────────────────────────── -->
+<div style="display: grid; grid-template-columns: 1fr 380px; gap: var(--space-md); margin-bottom: var(--space-lg);">
+
+  <!-- Left: Live Face Detection Video Feed -->
+  <div class="nvr-live-feed-viewport" style="min-height: 480px; background: #000; border-radius: var(--radius); overflow: hidden; position: relative;">
+    {% if selected_camera %}
+      <img
+        id="camera-stream"
+        src="{% url 'nvr:face_stream' selected_camera.id %}"
+        alt="Live Face Recognition for {{ selected_camera.name }}"
+        style="width: 100%; height: 100%; object-fit: contain;"
+        onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'640\' height=\'360\' viewBox=\'0 0 640 360\'%3E%3Crect width=\'640\' height=\'360\' fill=\'%230d0e10\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23ffa856\' font-family=\'sans-serif\' font-size=\'16\'%3EFace Recognition Stream Active%3C/text%3E%3C/svg%3E';"
+      />
+
+      <div class="nvr-live-overlay-hud">
+        <div class="nvr-live-hud-badge" style="background: rgba(255, 168, 86, 0.2); border-color: rgba(255, 168, 86, 0.4); color: var(--tertiary);">
+          <span class="status-dot" style="background-color: var(--tertiary);"></span>
+          <span>BIOMETRIC SCANNING • {{ selected_camera.name }}</span>
+        </div>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <span class="material-symbols-outlined">videocam_off</span>
+        <h2 class="empty-state__title">No Camera Configured</h2>
+        <p class="empty-state__body">Add a video camera to start face recognition attendance.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Right: Reference Face Roster & Registration -->
+  <div style="display: flex; flex-direction: column; gap: var(--space-md); max-height: calc(100vh - 180px); overflow-y: auto;">
+
+    <!-- Register Face Card -->
+    <div class="card card--dark" style="padding: 16px;">
+      <h3 style="font-size: 15px; font-weight: 700; color: var(--on-surface); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+        <span class="material-symbols-outlined" style="color: var(--tertiary); font-size: 18px;">person_add</span>
+        Register Reference Face
+      </h3>
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_face" />
+
+        <div style="margin-bottom: 10px;">
+          <label class="input-label" style="font-size: 11px;">Full Name *</label>
+          <input type="text" name="person_name" class="input" placeholder="e.g. Sarah Jenkins" required style="font-size: 12px; padding: 6px 10px;" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+          <div>
+            <label class="input-label" style="font-size: 11px;">Student / Staff ID</label>
+            <input type="text" name="person_id" class="input" placeholder="STU-1042" style="font-size: 12px; padding: 6px 10px;" />
+          </div>
+          <div>
+            <label class="input-label" style="font-size: 11px;">Dept / Class</label>
+            <input type="text" name="department" class="input" placeholder="CS - Y3" style="font-size: 12px; padding: 6px 10px;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <label class="input-label" style="font-size: 11px;">Reference Photo</label>
+          <input type="file" name="photo" accept="image/*" class="input" style="font-size: 11px; padding: 6px 8px;" />
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--sm btn--full" style="background: var(--tertiary); color: #000; font-weight: 700;">
+          <span>Register Person Profile</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Registered Profiles Directory -->
+    <div class="card card--dark" style="padding: 16px; flex: 1;">
+      <h3 style="font-size: 14px; font-weight: 700; color: var(--on-surface); margin-bottom: 10px; display: flex; justify-content: space-between;">
+        <span>Registered Faces</span>
+        <span style="color: var(--outline); font-family: var(--font-mono); font-size: 12px;">{{ face_references.count }} rostered</span>
+      </h3>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;">
+        {% for face in face_references %}
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.06);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="material-symbols-outlined" style="color: var(--tertiary); font-size: 20px;">account_circle</span>
+              <div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--on-surface);">{{ face.person_name }}</div>
+                <div style="font-size: 11px; color: var(--on-surface-variant); font-family: var(--font-mono);">
+                  {{ face.person_id|default:"General" }} {% if face.department %}• {{ face.department }}{% endif %}
+                </div>
+              </div>
+            </div>
+            <form method="post" onsubmit="return confirm('Delete reference for {{ face.person_name }}?');">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_face" />
+              <input type="hidden" name="face_id" value="{{ face.id }}" />
+              <button type="submit" style="background: none; border: none; color: var(--error); cursor: pointer;" title="Remove">
+                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+              </button>
+            </form>
+          </div>
+        {% empty %}
+          <div style="text-align: center; padding: 16px; color: var(--outline); font-size: 12px;">
+            No face profiles registered yet.<br>Add students/employees above.
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ── Bottom Attendance Log Table ────────────────────────────────────────── -->
+<div class="card card--dark" style="padding: 16px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <h3 style="font-size: 15px; font-weight: 700; color: var(--on-surface); margin: 0; display: flex; align-items: center; gap: 8px;">
+      <span class="material-symbols-outlined" style="color: var(--success); font-size: 18px;">fact_check</span>
+      <span>Live Attendance Records</span>
+    </h3>
+    <span style="font-size: 12px; color: var(--outline); font-family: var(--font-mono);">Automated Facial Match Log</span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <thead>
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--on-surface-variant); text-align: left;">
+          <th style="padding: 8px;">Time</th>
+          <th style="padding: 8px;">Student / Individual</th>
+          <th style="padding: 8px;">ID</th>
+          <th style="padding: 8px;">Camera Gate</th>
+          <th style="padding: 8px;">Match Confidence</th>
+          <th style="padding: 8px;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in attendance_logs %}
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="padding: 8px; font-family: var(--font-mono); color: var(--outline);">{{ record.timestamp|date:"H:i:s" }}</td>
+            <td style="padding: 8px; font-weight: 600; color: var(--on-surface);">{{ record.face_reference.person_name }}</td>
+            <td style="padding: 8px; font-family: var(--font-mono); color: var(--on-surface-variant);">{{ record.face_reference.person_id|default:"—" }}</td>
+            <td style="padding: 8px; color: var(--on-surface-variant);">{{ record.camera.name }}</td>
+            <td style="padding: 8px; font-family: var(--font-mono); color: var(--primary);">{{ record.confidence|floatformat:2 }}</td>
+            <td style="padding: 8px;">
+              <span class="badge" style="background: rgba(80, 255, 120, 0.15); color: var(--success); font-size: 11px; padding: 2px 8px; border-radius: 4px;">
+                {{ record.status }}
+              </span>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" style="padding: 16px; text-align: center; color: var(--outline);">
+              Awaiting face matching events from live camera stream...
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

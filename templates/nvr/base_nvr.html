@@ -20,17 +20,43 @@
         SE
       </a>
 
-      <!-- Primary Navigation Tabs -->
+      <!-- Primary Navigation Tabs & Services -->
       <nav class="nvr-sidebar__nav">
-        <!-- Live -->
+        <!-- Live (Traffic & Road Monitoring) -->
         <a href="{% url 'nvr:live' %}"
            class="nvr-sidebar__item {% if active_tab == 'live' %}nvr-sidebar__item--active{% endif %}"
-           title="Live Camera Monitor">
+           title="Live Multi-Camera & AI Detection">
           <span class="material-symbols-outlined">videocam</span>
           <span>Live</span>
         </a>
 
-        <!-- Review -->
+        <!-- Service 2: Face Recognition & Attendance -->
+        <a href="{% url 'nvr:face_recognition' %}"
+           class="nvr-sidebar__item {% if active_tab == 'face_recognition' %}nvr-sidebar__item--active{% endif %}"
+           title="Face Recognition & Attendance (Colleges/Offices)">
+          <span class="material-symbols-outlined">face</span>
+          <span style="position: relative;">
+            Face AI
+            {% if not user.is_superuser and user.service_profile and not user.service_profile.has_face_recognition %}
+              <span style="position: absolute; top: -6px; right: -8px; font-size: 10px;">🔒</span>
+            {% endif %}
+          </span>
+        </a>
+
+        <!-- Service 3: Industrial Object Counter -->
+        <a href="{% url 'nvr:object_counter' %}"
+           class="nvr-sidebar__item {% if active_tab == 'object_counter' %}nvr-sidebar__item--active{% endif %}"
+           title="Industrial Object Counter (Factories)">
+          <span class="material-symbols-outlined">precision_manufacturing</span>
+          <span style="position: relative;">
+            Counter
+            {% if not user.is_superuser and user.service_profile and not user.service_profile.has_object_count %}
+              <span style="position: absolute; top: -6px; right: -8px; font-size: 10px;">🔒</span>
+            {% endif %}
+          </span>
+        </a>
+
+        <!-- Review (Detection timeline) -->
         <a href="{% url 'nvr:review' %}"
            class="nvr-sidebar__item {% if active_tab == 'review' %}nvr-sidebar__item--active{% endif %}"
            title="Chronological Event Review">
@@ -38,7 +64,7 @@
           <span>Review</span>
         </a>
 
-        <!-- Explore -->
+        <!-- Explore (Object gallery) -->
         <a href="{% url 'nvr:explore' %}"
            class="nvr-sidebar__item {% if active_tab == 'explore' %}nvr-sidebar__item--active{% endif %}"
            title="Object-Class Detection Search">

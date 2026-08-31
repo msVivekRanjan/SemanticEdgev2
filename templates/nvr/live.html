@@ -1,14 +1,122 @@
 {% extends "nvr/base_nvr.html" %}
 {% load static %}
 
-{% block title %}Live Monitor — SemanticEdge NVR{% endblock %}
+{% block title %}
+  {% if view_mode == 'single' %}
+    {{ selected_camera.name }} — Live AI Inference
+  {% else %}
+    Multi-Camera Live Grid — SemanticEdge NVR
+  {% endif %}
+{% endblock %}
 
 {% block nvr_content %}
-<!-- ── Top Toolbar ────────────────────────────────────────────────────────── -->
+{% if not has_service_access %}
+  {% include "nvr/service_locked.html" with service_key="vehicles_people" service_title="Vehicles & People Detection" service_desc="Real-time multi-camera monitoring, YOLOv8 object detection, and ByteTrack vehicle/pedestrian trajectory tracking." %}
+{% else %}
+
+{% if view_mode == 'grid' %}
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- ── A. MULTI-CAMERA GRID (RAW FEEDS, NO YOLO/BYTETRACK) ──────────────────── -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+
+<div class="nvr-toolbar" style="margin-bottom: var(--space-md);">
+  <div class="nvr-toolbar__title">
+    <span class="material-symbols-outlined" style="color: var(--primary);">grid_view</span>
+    <span>Multi-Camera Live Grid</span>
+    <span style="font-size: 12px; font-weight: 400; color: var(--outline); font-family: var(--font-mono); margin-left: 8px;">
+      ({{ cameras.count }} Active Feeds • Raw Direct Stream)
+    </span>
+  </div>
+
+  <div class="nvr-filter-group">
+    {% if cameras.exists %}
+      <a href="{% url 'nvr:camera_live' cameras.first.id %}" class="btn btn--ghost btn--sm" title="Open Focused AI Single Camera View">
+        <span class="material-symbols-outlined" style="font-size: 16px;">crop_free</span>
+        Single AI View
+      </a>
+    {% endif %}
+
+    <a href="{% url 'nvr:settings' %}" class="btn btn--primary btn--sm" title="Add / Manage Cameras">
+      <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+      Add Camera
+    </a>
+  </div>
+</div>
+
+{% if cameras.exists %}
+  <!-- Multi-Camera Responsive Grid (1x2, 2x2, 3x3) -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: var(--space-md); padding-bottom: 24px;">
+    {% for cam in cameras %}
+      <div class="card card--dark" style="padding: 0; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); transition: transform 0.15s ease, border-color 0.15s ease; cursor: pointer;" onclick="window.location.href='{% url 'nvr:camera_live' cam.id %}';">
+
+        <!-- Camera Card Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.06);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="status-dot status-dot--online"></span>
+            <strong style="font-size: 13px; color: var(--on-surface);">{{ cam.name }}</strong>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge" style="background: rgba(255,255,255,0.06); color: var(--outline); font-size: 10px; font-family: var(--font-mono);">
+              RAW FEED
+            </span>
+            <a href="{% url 'nvr:camera_live' cam.id %}" class="btn btn--ghost btn--sm" style="padding: 2px 8px; font-size: 11px; height: 24px;" onclick="event.stopPropagation();">
+              <span>Focus AI</span>
+              <span class="material-symbols-outlined" style="font-size: 12px;">open_in_full</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Raw MJPEG Video Feed (Unmodified, No Bounding Boxes) -->
+        <div style="aspect-ratio: 16 / 9; width: 100%; background: #000; position: relative; overflow: hidden;">
+          <img
+            src="{% url 'nvr:raw_stream' cam.id %}"
+            alt="Raw live feed from {{ cam.name }}"
+            style="width: 100%; height: 100%; object-fit: cover;"
+            onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'640\' height=\'360\' viewBox=\'0 0 640 360\'%3E%3Crect width=\'640\' height=\'360\' fill=\'%230d0e10\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23928ea1\' font-family=\'sans-serif\' font-size=\'14\'%3ECamera {{ cam.id }} Initializing...%3C/text%3E%3C/svg%3E';"
+          />
+
+          <!-- Hover Action Overlay -->
+          <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); opacity: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s ease;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">
+            <span class="btn btn--primary btn--sm" style="box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+              <span class="material-symbols-outlined" style="font-size: 16px;">zoom_in</span>
+              <span>Click to Open YOLOv8 & Logs</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Camera Card Footer -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: rgba(0,0,0,0.25); font-size: 11px; color: var(--on-surface-variant); border-top: 1px solid rgba(255,255,255,0.04);">
+          <span style="font-family: var(--font-mono);">Source: {{ cam.source_url|truncatechars:28 }}</span>
+          <a href="{% url 'nvr:log' cam.id %}" class="text-link" style="color: var(--primary); font-size: 11px;" onclick="event.stopPropagation();">
+            Logs →
+          </a>
+        </div>
+
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <span class="material-symbols-outlined">videocam_off</span>
+    <h2 class="empty-state__title">No Cameras Registered</h2>
+    <p class="empty-state__body">Add your webcam or RTSP camera in the configuration tab to begin live monitoring.</p>
+    <a href="{% url 'nvr:settings' %}" class="btn btn--primary btn--sm">Configure Camera</a>
+  </div>
+{% endif %}
+
+{% else %}
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- ── B. FOCUSED SINGLE CAMERA (YOLOv8 + BYTETRACK + SIDE-BY-SIDE LOGS) ─────── -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+
 <div class="nvr-toolbar">
   <div class="nvr-toolbar__title">
+    <a href="{% url 'nvr:live' %}" class="btn btn--ghost btn--sm" style="margin-right: 12px; padding: 4px 10px;" title="Back to All Cameras Grid">
+      <span class="material-symbols-outlined" style="font-size: 16px;">arrow_back</span>
+      <span>All Cameras</span>
+    </a>
     <span class="material-symbols-outlined" style="color: var(--primary);">videocam</span>
-    <span>Live Monitor</span>
+    <span>Live AI Focus</span>
     {% if selected_camera %}
       <span style="font-size: 13px; font-weight: 400; color: var(--outline); font-family: var(--font-mono); margin-left: 8px;">
         [{{ selected_camera.name }}]
@@ -19,7 +127,7 @@
   <div class="nvr-filter-group">
     <!-- Camera Switcher Dropdown -->
     <form method="get" id="camera-select-form" style="display: flex; gap: 8px;">
-      <select name="camera" class="nvr-select" onchange="this.form.submit()">
+      <select name="camera" class="nvr-select" onchange="window.location.href='/nvr/camera/' + this.value + '/live/';">
         {% for cam in cameras %}
           <option value="{{ cam.id }}" {% if selected_camera.id == cam.id %}selected{% endif %}>
             📹 {{ cam.name }}
@@ -28,25 +136,25 @@
       </select>
     </form>
 
-    <a href="{% url 'nvr:log' selected_camera.id|default:1 %}" class="btn btn--ghost btn--sm" title="View CSV Detection Log">
+    <a href="{% url 'nvr:log' selected_camera.id|default:1 %}" class="btn btn--ghost btn--sm" title="View Full Detection Logs">
       <span class="material-symbols-outlined" style="font-size: 16px;">receipt_long</span>
       Logs
     </a>
 
     <a href="{% url 'nvr:settings' %}" class="btn btn--ghost btn--sm" title="Add / Manage Cameras">
-      <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
-      Add Feed
+      <span class="material-symbols-outlined" style="font-size: 16px;">settings</span>
+      Config
     </a>
   </div>
 </div>
 
-<!-- ── Live Grid Viewport & Telemetry ────────────────────────────────────── -->
+<!-- ── Live Grid Viewport & Telemetry + Logs ──────────────────────────────── -->
 <div class="nvr-live-grid">
 
-  <!-- Main Video Viewport -->
-  <div class="nvr-live-feed-viewport">
+  <!-- Main Video Viewport running YOLOv8 + ByteTrack -->
+  <div class="nvr-live-feed-viewport" style="position: relative;">
     {% if selected_camera %}
-      <!-- Live MJPEG Stream -->
+      <!-- Live MJPEG Stream with YOLOv8 + ByteTrack Bounding Boxes -->
       <img
         id="camera-stream"
         src="{% url 'nvr:stream' selected_camera.id %}"
@@ -61,7 +169,7 @@
           <span>LIVE • {{ selected_camera.name }}</span>
         </div>
         <div class="nvr-live-hud-badge">
-          <span>YOLOv8 + ByteTrack</span>
+          <span>YOLOv8 + ByteTrack Active</span>
         </div>
       </div>
     {% else %}
@@ -74,11 +182,12 @@
     {% endif %}
   </div>
 
-  <!-- Telemetry & Detection Sidebar -->
-  <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+  <!-- Telemetry & Beside-the-Feed Live Logs Sidebar -->
+  <div style="display: flex; flex-direction: column; gap: var(--space-md); max-height: calc(100vh - 160px); overflow-y: auto;">
     {% if selected_camera %}
+      <!-- Telemetry Stats Panel -->
       <div class="stats-panel" id="stats-panel" data-stats-url="{% url 'nvr:stats' selected_camera.id %}">
-        <div class="stats-panel__title">Real-Time Inference</div>
+        <div class="stats-panel__title">Real-Time Inference Telemetry</div>
 
         <div class="stats-row">
           <span class="stats-label">Inference FPS</span>
@@ -95,29 +204,51 @@
           <span class="stats-value" id="stat-track-ids" style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</span>
         </div>
 
-        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);">
-          <div class="stats-label" style="margin-bottom: 8px; font-weight: 700; text-transform: uppercase; font-size: 10px;">Class Breakdown</div>
+        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06);">
+          <div class="stats-label" style="margin-bottom: 6px; font-weight: 700; text-transform: uppercase; font-size: 10px;">Class Breakdown</div>
           <div id="stat-counts">
             <div style="font-size: 12px; color: var(--outline); font-family: var(--font-mono);">Awaiting detections...</div>
           </div>
         </div>
       </div>
 
-      <!-- Feed Properties Card -->
-      <div class="card card--dark" style="font-size: 12px;">
-        <div class="stats-panel__title" style="margin-bottom: 8px; padding-bottom: 4px;">Sensor Parameters</div>
-        <p style="color: var(--on-surface-variant); margin-bottom: 6px;">
-          <strong>Mode:</strong> {% if selected_camera.tracker_enabled %}YOLOv8 + ByteTrack (Tracked){% else %}YOLOv8 (Detect Only){% endif %}
-        </p>
-        <p style="color: var(--on-surface-variant); margin-bottom: 6px; word-break: break-all;">
-          <strong>Source:</strong> <code>{{ selected_camera.source_url }}</code>
-        </p>
-        <p style="color: var(--on-surface-variant);">
-          <strong>Resolution:</strong> Adaptive Letterbox (640x640)
-        </p>
+      <!-- Real-Time Detection Logs Stream Beside Feed -->
+      <div class="card card--dark" style="padding: 14px; flex: 1; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+          <span style="font-size: 12px; font-weight: 700; color: var(--on-surface); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="color: var(--primary); font-size: 16px;">receipt_long</span>
+            Detection Logs
+          </span>
+          <a href="{% url 'nvr:log' selected_camera.id %}" class="text-link" style="font-size: 11px; color: var(--primary);">
+            Full Log →
+          </a>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px; overflow-y: auto; max-height: 260px; font-family: var(--font-mono); font-size: 11px;">
+          {% for det in recent_detections %}
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.04);">
+              <div>
+                <span style="color: var(--on-surface); font-weight: 600;">{{ det.class_name|upper }}</span>
+                <span style="color: var(--outline); margin-left: 4px;">#{{ det.track_id }}</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--primary);">{{ det.confidence|floatformat:2 }}</span>
+                <span style="color: var(--outline); font-size: 10px;">{{ det.created_at|date:"H:i:s" }}</span>
+              </div>
+            </div>
+          {% empty %}
+            <div style="text-align: center; color: var(--outline); padding: 20px 0; font-size: 11px;">
+              Live detection events will appear here in real time...
+            </div>
+          {% endfor %}
+        </div>
       </div>
+
     {% endif %}
   </div>
 
 </div>
+
+{% endif %}
+{% endif %}
 {% endblock %}

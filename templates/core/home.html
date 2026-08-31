@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}SemanticEdge — Locally Processed AI NVR{% endblock %}
+{% block title %}SemanticEdge — Locally Processed AI NVR & Custom Vision Services{% endblock %}
 
 {% block content %}
 
@@ -10,25 +10,25 @@
   <div>
     <!-- Eyebrow -->
     <p class="eyebrow" style="margin-bottom: var(--space-3xl); margin-left: clamp(0px, 6vw, 80px);">
-      LOCALLY PROCESSED AI NVR
+      LOCALLY PROCESSED AI NVR & CUSTOM VISION SERVICES
     </p>
 
     <!-- Giant headline -->
     <h1 class="bleed-text" style="
-      font-size: clamp(52px, 10vw, 150px);
+      font-size: clamp(48px, 9vw, 130px);
       font-weight: 900;
-      line-height: 0.9;
+      line-height: 0.92;
       letter-spacing: -0.04em;
       color: var(--on-surface);
       margin-left: clamp(0px, 3vw, 40px);
       margin-bottom: var(--space-3xl);
     ">
-      Locally processed<br>
-      <span class="gradient-text">intelligent vision.</span>
+      Edge intelligence tailored to<br>
+      <span class="gradient-text">your operational scale.</span>
     </h1>
 
     <!-- Body + High-Prominence Action Buttons -->
-    <div style="max-width: 520px; margin-left: auto; padding-right: var(--margin-mobile);">
+    <div style="max-width: 540px; margin-left: auto; padding-right: var(--margin-mobile);">
       <p style="
         font-size: 16px;
         font-weight: 300;
@@ -36,28 +36,27 @@
         color: var(--on-surface-variant);
         margin-bottom: var(--space-xl);
       ">
-        SemanticEdge is an open-source NVR built around real-time AI object detection.
-        All processing is performed locally on your own hardware — your camera feeds
-        never leave your network. YOLOv8 inference, ByteTrack multi-object tracking,
-        and structured event logging, all in a single deployable system.
+        SemanticEdge delivers enterprise-grade NVR infrastructure powered by on-premise AI vision.
+        We provide specialized computer vision services designed for Traffic Authorities,
+        Colleges & Educational Institutions, and Industrial Manufacturing Plants — with zero cloud leakage.
       </p>
 
       <!-- Prominent Buttons with Arrow Icons -->
       <div style="display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: center;">
         <a href="{% url 'accounts:login' %}" class="btn btn--primary btn--hero">
-          <span>Deploy Infrastructure</span>
+          <span>Deploy Console</span>
           <span class="material-symbols-outlined">arrow_forward</span>
         </a>
-        <a href="{% url 'docs:list' %}" class="btn btn--ghost btn--hero">
-          <span>Read Documentation</span>
-          <span class="material-symbols-outlined">menu_book</span>
+        <a href="{% url 'core:book_demo' %}" class="btn btn--hero" style="background: rgba(109, 94, 245, 0.15); border: 1px solid var(--primary); color: #fff;">
+          <span>Book a Demo</span>
+          <span class="material-symbols-outlined">calendar_today</span>
         </a>
       </div>
     </div>
   </div>
 
   <!-- Hero Dashboard Preview Image -->
-  <div style="margin-top: 96px; position: relative;">
+  <div style="margin-top: 80px; position: relative;">
     <div style="
       aspect-ratio: 21 / 9;
       width: 100%;
@@ -84,11 +83,154 @@
       border-radius: var(--radius-lg) 0 var(--radius-lg) 0;
       border-right: none;
       border-bottom: none;
-    ">&gt; SemanticEdge NVR v1.0
-[✓] YOLOv8n loaded (Edge CPU)
-[✓] ByteTrack initialized
-[✓] Stream: /dev/video0
-[✓] Latency: 28ms/frame</div>
+    ">&gt; SemanticEdge NVR v2.0
+[✓] Traffic & Pedestrian Pipeline Active
+[✓] Biometric Face Matching Ready
+[✓] Industrial Object Counter Calibrated
+[✓] 100% Local Inference Engine</div>
+  </div>
+</section>
+
+<!-- ── 🌟 NEW: SERVICES CATALOGUE SECTION ─────────────────────────────────── -->
+<section class="section reveal" id="services" style="padding-top: var(--space-4xl); padding-bottom: var(--space-4xl); border-top: 1px solid rgba(255,255,255,0.06);">
+  <div style="text-align: center; max-width: 760px; margin: 0 auto var(--space-4xl) auto;">
+    <p class="eyebrow" style="margin-bottom: var(--space-sm);">SERVICES CATALOGUE</p>
+    <h2 style="font-size: clamp(34px, 5vw, 60px); font-weight: 900; letter-spacing: -0.03em; color: var(--on-surface); line-height: 1.1; margin-bottom: var(--space-md);">
+      Tailored Edge AI Solutions for <span class="gradient-text">Your Industry</span>
+    </h2>
+    <p style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.8;">
+      While SemanticEdge provides standard NVR capabilities, we build tailored computer vision service packages designed for specific institutional and enterprise missions.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-xl);">
+
+    <!-- Service 1: Vehicles & People Detection -->
+    <div class="card card--dark" style="display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid var(--primary); padding: var(--space-xl); position: relative; overflow: hidden;">
+      <div style="position: absolute; top: 12px; right: 14px;">
+        <span class="badge" style="background: rgba(109, 94, 245, 0.2); color: var(--primary); font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;">
+          TRAFFIC & MUNICIPAL
+        </span>
+      </div>
+      <div>
+        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(109, 94, 245, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-md);">
+          <span class="material-symbols-outlined" style="color: var(--primary); font-size: 28px;">traffic</span>
+        </div>
+        <h3 style="font-size: 22px; font-weight: 800; color: var(--on-surface); margin-bottom: 8px;">
+          Vehicles & People Detection
+        </h3>
+        <p style="font-size: 14px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7; margin-bottom: var(--space-lg);">
+          Custom-tailored for <strong>Traffic Authorities & Smart Cities</strong>. Continuous monitoring of roadways, pedestrian crossings, congestion densities, and automated perimeter violation logging.
+        </p>
+
+        <ul style="list-style: none; padding: 0; margin: 0 0 var(--space-xl) 0; font-size: 13px; color: var(--on-surface-variant); display: flex; flex-direction: column; gap: 8px;">
+          <li style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px;">check_circle</span>
+            YOLOv8 + ByteTrack multi-vehicle trajectory
+          </li>
+          <li style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px;">check_circle</span>
+            Pedestrian crossing & lane violation alerts
+          </li>
+          <li style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px;">check_circle</span>
+            Automated vehicle speed & density analytics
+          </li>
+        </ul>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center; margin-top: auto; padding-top: var(--space-md); border-top: 1px solid rgba(255,255,255,0.06);">
+        <a href="{% url 'core:book_demo' %}?service=vehicles_people" class="btn btn--primary btn--sm" style="flex: 1;">
+          <span>Book Traffic Demo</span>
+          <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Service 2: Face Recognition & Attendance -->
+    <div class="card card--dark" style="display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid var(--tertiary); padding: var(--space-xl); position: relative; overflow: hidden;">
+      <div style="position: absolute; top: 12px; right: 14px;">
+        <span class="badge" style="background: rgba(255, 168, 86, 0.2); color: var(--tertiary); font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;">
+          ACADEMIC & ENTERPRISE
+        </span>
+      </div>
+      <div>
+        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(255, 168, 86, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-md);">
+          <span class="material-symbols-outlined" style="color: var(--tertiary); font-size: 28px;">face</span>
+        </div>
+        <h3 style="font-size: 22px; font-weight: 800; color: var(--on-surface); margin-bottom: 8px;">
+          Face Recognition & Attendance
+        </h3>
+        <p style="font-size: 14px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7; margin-bottom: var(--space-lg);">
+          Designed for <strong>Colleges, Universities & Corporate Campuses</strong>. Instant facial matching against uploaded student or staff rosters with automated biometric attendance logging.
+        </p>
+
+        <ul style="list-style: none; padding: 0; margin: 0 0 var(--space-xl) 0; font-size: 13px; color: var(--on-surface-variant); display: flex; flex-direction: column; gap: 8px;">
+          <li style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px;">check_circle</span>
+            Upload student/employee reference photo library
+          </li>
+          <li style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px;">check_circle</span>
+            Real-time multi-face recognition at entry gates
+          </li>
+          <li style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px;">check_circle</span>
+            Exportable daily attendance & timestamp logs
+          </li>
+        </ul>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center; margin-top: auto; padding-top: var(--space-md); border-top: 1px solid rgba(255,255,255,0.06);">
+        <a href="{% url 'core:book_demo' %}?service=face_recognition" class="btn btn--primary btn--sm" style="flex: 1; background: var(--tertiary); color: #000;">
+          <span>Book College Demo</span>
+          <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Service 3: Industrial Object & Production Counter -->
+    <div class="card card--dark" style="display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #3cc8ff; padding: var(--space-xl); position: relative; overflow: hidden;">
+      <div style="position: absolute; top: 12px; right: 14px;">
+        <span class="badge" style="background: rgba(60, 200, 255, 0.2); color: #3cc8ff; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;">
+          MANUFACTURING & FACTORY
+        </span>
+      </div>
+      <div>
+        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(60, 200, 255, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-md);">
+          <span class="material-symbols-outlined" style="color: #3cc8ff; font-size: 28px;">precision_manufacturing</span>
+        </div>
+        <h3 style="font-size: 22px; font-weight: 800; color: var(--on-surface); margin-bottom: 8px;">
+          Industrial Object Counter
+        </h3>
+        <p style="font-size: 14px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7; margin-bottom: var(--space-lg);">
+          Engineered for <strong>Factories, Assembly Lines & Logistics Centers</strong>. High-frequency item counting along conveyor lines with real-time throughput metrics and defect threshold alerts.
+        </p>
+
+        <ul style="list-style: none; padding: 0; margin: 0 0 var(--space-xl) 0; font-size: 13px; color: var(--on-surface-variant); display: flex; flex-direction: column; gap: 8px;">
+          <li style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px;">check_circle</span>
+            High-speed conveyor belt line-crossing tally
+          </li>
+          <li style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px;">check_circle</span>
+            Live parts-per-minute (PPM) rate calculations
+          </li>
+          <li style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px;">check_circle</span>
+            Shift yield reporting and discrepancy logging
+          </li>
+        </ul>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center; margin-top: auto; padding-top: var(--space-md); border-top: 1px solid rgba(255,255,255,0.06);">
+        <a href="{% url 'core:book_demo' %}?service=object_count" class="btn btn--primary btn--sm" style="flex: 1; background: #3cc8ff; color: #000;">
+          <span>Book Factory Demo</span>
+          <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
+        </a>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -97,7 +239,7 @@
   <div style="display:grid; grid-template-columns:1fr; gap: var(--gutter); margin-bottom: var(--space-4xl);">
     <div>
       <h2 style="font-size: clamp(36px, 5vw, 64px); font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: var(--on-surface); margin-bottom: var(--space-lg);">
-        Capabilities
+        Core Architecture
       </h2>
     </div>
     <div style="max-width: 480px; margin-left: auto;">
@@ -120,7 +262,7 @@
           Reduce false positives
         </h3>
         <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.8;">
-          YOLOv8 runs on every frame and filters to six critical COCO object classes,
+          YOLOv8 runs on every frame and filters to target object classes,
           so motion events are evaluated against real edge AI — not crude pixel diffs.
           Even on CPU, processing stays under 30ms per frame.
         </p>
@@ -169,9 +311,9 @@ Processing time: 18ms</div>
           Structured event log
         </h3>
         <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.8;">
-          Every detection is appended to a structured CSV log with timestamp, frame number,
-          track ID, class, confidence, bounding box coordinates, and line-crossing status —
-          ready for analytics or alerting pipelines.
+          Every detection is stored with timestamp, frame number,
+          track ID, class, confidence, bounding box coordinates, and single snapshot evidence —
+          strictly accessible only to the owning user.
         </p>
       </div>
       <div>
@@ -186,146 +328,19 @@ Processing time: 18ms</div>
   </div>
 </section>
 
-<!-- ── Supported Object Classes ──────────────────────────────────────────── -->
-<section class="section reveal">
-  <div style="text-align: center; margin-bottom: var(--space-4xl);">
-    <p class="eyebrow" style="margin-bottom: var(--space-md);">Detection scope</p>
-    <h2 style="font-size: clamp(32px, 4vw, 56px); font-weight: 900; letter-spacing: -0.03em; color: var(--on-surface);">
-      Six critical object classes
-    </h2>
-    <p style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); margin-top: var(--space-md); max-width: 50ch; margin-left: auto; margin-right: auto;">
-      SemanticEdge filters COCO detections to the six object classes that matter
-      most for physical security and perimeter monitoring.
-    </p>
-  </div>
-
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); max-width: 800px; margin: 0 auto;">
-    {% with classes="person,bicycle,car,motorcycle,bus,truck" %}
-    <div class="card card--dark class--person" style="display: flex; align-items: center; gap: var(--space-md);">
-      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
-      <div>
-        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Person</p>
-        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 0</p>
-      </div>
-    </div>
-    <div class="card card--dark class--bicycle" style="display: flex; align-items: center; gap: var(--space-md);">
-      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
-      <div>
-        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Bicycle</p>
-        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 1</p>
-      </div>
-    </div>
-    <div class="card card--dark class--car" style="display: flex; align-items: center; gap: var(--space-md);">
-      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
-      <div>
-        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Car</p>
-        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 2</p>
-      </div>
-    </div>
-    <div class="card card--dark class--motorcycle" style="display: flex; align-items: center; gap: var(--space-md);">
-      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
-      <div>
-        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Motorcycle</p>
-        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 3</p>
-      </div>
-    </div>
-    <div class="card card--dark class--bus" style="display: flex; align-items: center; gap: var(--space-md);">
-      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
-      <div>
-        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Bus</p>
-        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 5</p>
-      </div>
-    </div>
-    <div class="card card--dark class--truck" style="display: flex; align-items: center; gap: var(--space-md);">
-      <span class="class-dot" style="background-color: var(--cls-color); flex-shrink: 0;"></span>
-      <div>
-        <p style="font-size: 14px; font-weight: 600; color: var(--on-surface);">Truck</p>
-        <p class="mono" style="color: var(--on-surface-variant); font-size: 11px;">COCO ID 7</p>
-      </div>
-    </div>
-    {% endwith %}
-  </div>
-</section>
-
-<!-- ── How It Works ──────────────────────────────────────────────────────── -->
-<section class="section reveal">
-  <div style="text-align: center; margin-bottom: var(--space-4xl);">
-    <p class="eyebrow" style="margin-bottom: var(--space-md);">Architecture</p>
-    <h2 style="font-size: clamp(32px, 4vw, 56px); font-weight: 900; letter-spacing: -0.03em; color: var(--on-surface);">
-      How it works
-    </h2>
-  </div>
-
-  <div style="display: grid; grid-template-columns: 1fr; gap: 0; max-width: 920px; margin: 0 auto;">
-
-    <div style="display: flex; gap: var(--space-lg); padding: var(--space-2xl) 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
-      <div style="width: 48px; flex-shrink: 0;">
-        <span class="mono" style="color: var(--primary); font-size: 20px; font-weight: 500;">01</span>
-      </div>
-      <div>
-        <h3 style="font-size: 20px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">Detect</h3>
-        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7;">
-          YOLOv8 runs inference on every captured frame, returning bounding boxes
-          and class labels filtered to the six target COCO classes.
-        </p>
-      </div>
-    </div>
-
-    <div style="display: flex; gap: var(--space-lg); padding: var(--space-2xl) 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
-      <div style="width: 48px; flex-shrink: 0;">
-        <span class="mono" style="color: var(--primary); font-size: 20px; font-weight: 500;">02</span>
-      </div>
-      <div>
-        <h3 style="font-size: 20px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">Track</h3>
-        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7;">
-          ByteTrack assigns and maintains unique IDs across frames, even through
-          brief occlusions. Trajectory history (last 30 points) is drawn on the frame.
-        </p>
-      </div>
-    </div>
-
-    <div style="display: flex; gap: var(--space-lg); padding: var(--space-2xl) 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
-      <div style="width: 48px; flex-shrink: 0;">
-        <span class="mono" style="color: var(--primary); font-size: 20px; font-weight: 500;">03</span>
-      </div>
-      <div>
-        <h3 style="font-size: 20px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">Log</h3>
-        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7;">
-          Every detection event is appended to a structured CSV log with full metadata —
-          timestamps, coordinates, class, confidence, and line-crossing status.
-        </p>
-      </div>
-    </div>
-
-    <div style="display: flex; gap: var(--space-lg); padding: var(--space-2xl) 0;">
-      <div style="width: 48px; flex-shrink: 0;">
-        <span class="mono" style="color: var(--primary); font-size: 20px; font-weight: 500;">04</span>
-      </div>
-      <div>
-        <h3 style="font-size: 20px; font-weight: 600; color: var(--on-surface); margin-bottom: 8px;">View</h3>
-        <p style="font-size: 15px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.7;">
-          Django streams annotated JPEG frames to your browser via MJPEG-over-HTTP —
-          no video library, no WebRTC complexity. The stats panel updates in real time.
-        </p>
-      </div>
-    </div>
-
-  </div>
-</section>
-
 <!-- ── CTA Section with Action Buttons ──────────────────────────────────── -->
 <section class="section reveal" style="margin-bottom: var(--space-5xl);">
   <div style="text-align: center; max-width: 700px; margin: 0 auto;">
     <h2 style="
-      font-size: clamp(52px, 8vw, 92px);
+      font-size: clamp(48px, 7vw, 84px);
       font-weight: 900;
       line-height: 0.92;
       letter-spacing: -0.04em;
       color: var(--on-surface);
       margin-bottom: var(--space-2xl);
-    ">Ready to deploy?</h2>
-    <p style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); margin-bottom: var(--space-3xl); max-width: 42ch; margin-left: auto; margin-right: auto;">
-      Connect your cameras, start the edge AI pipeline, and monitor detections live on hardware you own.
+    ">Ready to transform your vision ops?</h2>
+    <p style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); margin-bottom: var(--space-3xl); max-width: 44ch; margin-left: auto; margin-right: auto;">
+      Connect your local cameras, deploy tailored intelligence services, and monitor securely on hardware you own.
     </p>
 
     <!-- Prominent Buttons with Forward Arrows -->
@@ -334,9 +349,9 @@ Processing time: 18ms</div>
         <span>Start Monitoring</span>
         <span class="material-symbols-outlined">arrow_forward</span>
       </a>
-      <a href="{% url 'docs:list' %}" class="btn btn--ghost btn--hero">
-        <span>Read the Docs</span>
-        <span class="material-symbols-outlined">menu_book</span>
+      <a href="{% url 'core:book_demo' %}" class="btn btn--ghost btn--hero">
+        <span>Schedule a Demo</span>
+        <span class="material-symbols-outlined">calendar_today</span>
       </a>
     </div>
   </div>

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Create Account — SemanticEdge{% endblock %}
+{% block meta_description %}Register a new account on SemanticEdge to start AI-powered camera monitoring.{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card" style="max-width: 460px;">
+
+    <!-- Brand Header -->
+    <div style="margin-bottom: var(--space-xl);">
+      <h1 class="auth-card__logo">SemanticEdge</h1>
+      <p class="auth-card__subtitle">Create an account to configure your AI NVR</p>
+    </div>
+
+    <!-- Error Messages -->
+    {% if form.non_field_errors %}
+    <div class="auth-card__error" role="alert" style="margin-bottom: var(--space-md);">
+      {% for error in form.non_field_errors %}
+      <div>{{ error }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Registration Form -->
+    <form method="post" class="auth-card__form" id="register-form" novalidate>
+      {% csrf_token %}
+
+      <div class="auth-card__field">
+        <label class="input-label" for="{{ form.username.id_for_label }}">Username</label>
+        <input
+          type="text"
+          id="{{ form.username.id_for_label }}"
+          name="{{ form.username.html_name }}"
+          class="input"
+          placeholder="e.g. security_lead"
+          autocomplete="username"
+          autofocus
+          value="{{ form.username.value|default:'' }}"
+          required
+        />
+        {% if form.username.errors %}
+        <p style="color: var(--error); font-size: 12px; margin-top: 4px;">{{ form.username.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div class="auth-card__field">
+        <label class="input-label" for="{{ form.email.id_for_label }}">Work Email</label>
+        <input
+          type="email"
+          id="{{ form.email.id_for_label }}"
+          name="{{ form.email.html_name }}"
+          class="input"
+          placeholder="lead@organization.com"
+          autocomplete="email"
+          value="{{ form.email.value|default:'' }}"
+          required
+        />
+        {% if form.email.errors %}
+        <p style="color: var(--error); font-size: 12px; margin-top: 4px;">{{ form.email.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div class="auth-card__field">
+        <label class="input-label" for="{{ form.password.id_for_label }}">Password</label>
+        <input
+          type="password"
+          id="{{ form.password.id_for_label }}"
+          name="{{ form.password.html_name }}"
+          class="input"
+          placeholder="••••••••"
+          autocomplete="new-password"
+          required
+        />
+        {% if form.password.errors %}
+        <p style="color: var(--error); font-size: 12px; margin-top: 4px;">{{ form.password.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div class="auth-card__field">
+        <label class="input-label" for="{{ form.password_confirm.id_for_label }}">Confirm Password</label>
+        <input
+          type="password"
+          id="{{ form.password_confirm.id_for_label }}"
+          name="{{ form.password_confirm.html_name }}"
+          class="input"
+          placeholder="••••••••"
+          autocomplete="new-password"
+          required
+        />
+        {% if form.password_confirm.errors %}
+        <p style="color: var(--error); font-size: 12px; margin-top: 4px;">{{ form.password_confirm.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--full btn--hero" id="register-submit" style="margin-top: var(--space-sm);">
+        <span>Create Account & Start</span>
+        <span class="material-symbols-outlined">arrow_forward</span>
+      </button>
+    </form>
+
+    <!-- Already have account prompt -->
+    <div style="margin-top: var(--space-lg); text-align: center; font-size: 13px; color: var(--on-surface-variant);">
+      Already have an account?
+      <a href="{% url 'accounts:login' %}" class="text-link" style="font-weight: 600; margin-left: 4px; color: var(--primary);">
+        Sign In
+      </a>
+    </div>
+
+    <!-- Footer Links -->
+    <div style="margin-top: var(--space-xl); padding-top: var(--space-md); border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+      <a href="{% url 'core:home' %}" class="text-link text-link--muted" style="font-size: 11px;">
+        <span class="material-symbols-outlined" style="font-size: 14px;">arrow_back</span>
+        <span>Home</span>
+      </a>
+      <a href="{% url 'core:book_demo' %}" class="text-link text-link--muted" style="font-size: 11px;">
+        <span>Book a Demo</span>
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

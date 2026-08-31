@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Book a Demo & Custom Services — SemanticEdge{% endblock %}
+{% block meta_description %}Schedule an edge AI demonstration tailored to your organization's needs: Traffic & Roads, College Face Attendance, or Factory Object Counting.{% endblock %}
+
+{% block content %}
+<section class="section reveal" style="padding-top: calc(var(--nav-height) + var(--space-3xl)); max-width: 1100px; margin: 0 auto;">
+
+  <!-- Page Header -->
+  <div style="text-align: center; margin-bottom: var(--space-3xl);">
+    <p class="eyebrow" style="margin-bottom: var(--space-sm);">CUSTOM ENTERPRISE VISION</p>
+    <h1 style="font-size: clamp(36px, 6vw, 64px); font-weight: 900; letter-spacing: -0.03em; color: var(--on-surface); line-height: 1.1; margin-bottom: var(--space-md);">
+      Book a Demo & <span class="gradient-text">Activate Services</span>
+    </h1>
+    <p style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); max-width: 65ch; margin: 0 auto; line-height: 1.8;">
+      SemanticEdge delivers tailored on-premise vision intelligence modules designed specifically for Traffic Authorities, Academic Institutions, and Industrial Manufacturing Plants.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-2xl); align-items: start;">
+
+    <!-- Left: Services Value Summary -->
+    <div style="display: flex; flex-direction: column; gap: var(--space-lg);">
+
+      <div class="card card--dark" style="border-left: 3px solid var(--primary);">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+          <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">traffic</span>
+          <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0;">Traffic & Road Surveillance</h3>
+        </div>
+        <p style="font-size: 13px; color: var(--on-surface-variant); line-height: 1.7; margin: 0;">
+          Real-time vehicle classification, pedestrian safety monitoring, flow density telemetry, and automated violation/line-crossing logs for municipal traffic authorities.
+        </p>
+      </div>
+
+      <div class="card card--dark" style="border-left: 3px solid var(--tertiary);">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+          <span class="material-symbols-outlined" style="color: var(--tertiary); font-size: 24px;">face</span>
+          <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0;">Facial Recognition & Attendance</h3>
+        </div>
+        <p style="font-size: 13px; color: var(--on-surface-variant); line-height: 1.7; margin: 0;">
+          High-accuracy face matching against uploaded database references with instant timestamped attendance logging for universities, colleges, and corporate campuses.
+        </p>
+      </div>
+
+      <div class="card card--dark" style="border-left: 3px solid #3cc8ff;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+          <span class="material-symbols-outlined" style="color: #3cc8ff; font-size: 24px;">precision_manufacturing</span>
+          <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0;">Industrial Object Counter</h3>
+        </div>
+        <p style="font-size: 13px; color: var(--on-surface-variant); line-height: 1.7; margin: 0;">
+          Automated conveyor belt part counting, defect tracking, and yield throughput reporting directly on factory floor edge compute without cloud dependencies.
+        </p>
+      </div>
+
+      <div style="padding: 16px 20px; background-color: rgba(109, 94, 245, 0.08); border: 1px dashed rgba(109, 94, 245, 0.3); border-radius: var(--radius); font-size: 13px; color: var(--on-surface-variant); line-height: 1.6;">
+        <strong style="color: var(--on-surface);">🔒 100% Local Processing Guarantee:</strong> All models run strictly on your on-premises edge servers or workstations. No raw video or biometric data is ever transmitted off-site.
+      </div>
+
+    </div>
+
+    <!-- Right: Interactive Contact & Demo Form -->
+    <div class="card card--dark" style="padding: var(--space-xl); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+
+      {% if submitted %}
+      <div style="text-align: center; padding: var(--space-xl) 0;">
+        <span class="material-symbols-outlined" style="font-size: 56px; color: var(--success); margin-bottom: var(--space-md);">check_circle</span>
+        <h2 style="font-size: 24px; font-weight: 800; color: var(--on-surface); margin-bottom: 8px;">Demo Request Received!</h2>
+        <p style="font-size: 14px; color: var(--on-surface-variant); line-height: 1.7; margin-bottom: var(--space-xl);">
+          Thank you, <strong style="color: var(--on-surface);">{{ demo_req.full_name }}</strong>. Our edge AI specialists will prepare a custom demonstration for <strong style="color: var(--on-surface);">{{ demo_req.company_name }}</strong> and contact you at <strong style="color: var(--primary);">{{ demo_req.email }}</strong>.
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+          <a href="{% url 'core:home' %}" class="btn btn--ghost btn--sm">Back to Home</a>
+          {% if user.is_authenticated %}
+            <a href="{% url 'nvr:live' %}" class="btn btn--primary btn--sm">Return to NVR Console</a>
+          {% else %}
+            <a href="{% url 'accounts:login' %}" class="btn btn--primary btn--sm">Sign In to NVR</a>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+
+      <h2 style="font-size: 22px; font-weight: 800; color: var(--on-surface); margin-bottom: 6px;">Request Service Activation</h2>
+      <p style="font-size: 13px; color: var(--on-surface-variant); margin-bottom: var(--space-lg);">
+        Fill in your organization details to schedule a live demo or unlock specific services.
+      </p>
+
+      <form method="post" id="demo-request-form">
+        {% csrf_token %}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
+          <div>
+            <label class="input-label" for="{{ form.full_name.id_for_label }}">Full Name *</label>
+            {{ form.full_name }}
+            {% if form.full_name.errors %}
+              <p style="color: var(--error); font-size: 11px; margin-top: 4px;">{{ form.full_name.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="input-label" for="{{ form.company_name.id_for_label }}">Organization / Institution *</label>
+            {{ form.company_name }}
+            {% if form.company_name.errors %}
+              <p style="color: var(--error); font-size: 11px; margin-top: 4px;">{{ form.company_name.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
+          <div>
+            <label class="input-label" for="{{ form.email.id_for_label }}">Work Email *</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+              <p style="color: var(--error); font-size: 11px; margin-top: 4px;">{{ form.email.errors.0 }}</p>
+            {% endif %}
+          </div>
+
+          <div>
+            <label class="input-label" for="{{ form.phone.id_for_label }}">Phone Number</label>
+            {{ form.phone }}
+          </div>
+        </div>
+
+        <!-- Service Checkboxes -->
+        <div style="margin-bottom: var(--space-md);">
+          <label class="input-label" style="margin-bottom: 8px;">Select Services Needed *</label>
+          <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.06);">
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--on-surface); cursor: pointer;">
+              {{ form.service_vehicles_people }}
+              <span>🚗 <strong>Vehicles & People Detection</strong> (Traffic & Road Monitoring)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--on-surface); cursor: pointer;">
+              {{ form.service_face_recognition }}
+              <span>👤 <strong>Face Recognition & Attendance</strong> (Colleges & Workplaces)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--on-surface); cursor: pointer;">
+              {{ form.service_object_count }}
+              <span>📦 <strong>Industrial Object Counter</strong> (Factories & Production Lines)</span>
+            </label>
+          </div>
+        </div>
+
+        <div style="margin-bottom: var(--space-md);">
+          <label class="input-label" for="{{ form.camera_count.id_for_label }}">Estimated Camera Scale</label>
+          {{ form.camera_count }}
+        </div>
+
+        <div style="margin-bottom: var(--space-lg);">
+          <label class="input-label" for="{{ form.message.id_for_label }}">Project Details / Custom Requirements</label>
+          {{ form.message }}
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--full btn--hero" id="submit-demo-btn">
+          <span>Submit Request</span>
+          <span class="material-symbols-outlined">send</span>
+        </button>
+
+      </form>
+      {% endif %}
+
+    </div>
+
+  </div>
+
+</section>
+{% endblock %}

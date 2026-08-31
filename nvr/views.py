@@ -2,13 +2,15 @@
 nvr/views.py
 ------------
 Full suite of views for the Professional SemanticEdge NVR SaaS Surface:
-1. LiveView: Real-time multi-camera and single-camera monitor.
-2. ReviewView: Chronological event timeline gallery with filters.
-3. ExploreView: Object-class categorized detection gallery.
-4. ExportView: Video clip and image snapshot evidence extraction.
-5. SettingsView: In-app camera and AI detection pipeline settings.
-6. SystemStatusApiView: Real-time telemetry (CPU, GPU/NPU, RAM, FPS, Health).
-7. StreamView & StatsView: MJPEG live streaming and per-camera stats.
+1. LiveView: Real-time Multi-Camera Grid (raw feeds) and Focused Single-Camera View (YOLO+ByteTrack + logs).
+2. FaceRecognitionView: Biometric face matching & attendance tracking for colleges/institutions.
+3. ObjectCounterView: Industrial conveyor item counting for manufacturing factories.
+4. ReviewView: Chronological event timeline gallery with single snapshot evidence per object.
+5. ExploreView: Object-class categorized detection gallery.
+6. ExportView: Video clip and image snapshot evidence extraction.
+7. SettingsView: In-app camera and AI detection pipeline settings.
+8. SystemStatusApiView: Real-time telemetry (CPU, Engine, RAM, FPS, Health).
+9. Stream endpoints: Raw MJPEG stream, YOLO stream, Face stream, Counter stream.
 """
 
 from __future__ import annotations
@@ -30,10 +32,18 @@ from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpRe
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.timezone import now
 from django.views import View
-from django.views.generic import DetailView, ListView, TemplateView
+from django.views.generic import TemplateView
 
-from .models import Camera
-from .streaming import frame_generator, get_all_active_stats, get_stats
+from accounts.models import UserServiceProfile
+from .models import AttendanceRecord, Camera, DetectionEvent, FaceReference, ObjectCountRecord
+from .streaming import (
+    face_recognition_frame_generator,
+    frame_generator,
+    get_all_active_stats,
+    get_stats,
+    object_counter_frame_generator,
+    raw_frame_generator,
+)
 
 
 class CameraOwnershipMixin:
@@ -46,126 +56,235 @@ class CameraOwnershipMixin:
         return camera
 
 
-# ── 1. Live Tab ───────────────────────────────────────────────────────────────
+# ── 1. Live Tab (Multi-Camera Grid & Focused Single Camera) ───────────────────
 
 class LiveView(LoginRequiredMixin, TemplateView):
     """
-    Main Live Tab: Monitored live video feed with camera switcher,
-    real-time bounding boxes, telemetry stats, and class distribution.
+    Live Tab:
+    - Default: Multi-Camera Grid rendering raw camera feeds for all registered cameras.
+    - Single Camera Focus: Clicking a camera opens focused YOLOv8 + ByteTrack view
+      with real-time bounding boxes, telemetry stats, and live detection logs beside it.
     """
 
     template_name = "nvr/live.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
-        user_cameras = Camera.objects.filter(owner=self.request.user, is_active=True).order_by("id")
+        user = self.request.user
+        user_cameras = Camera.objects.filter(owner=user, is_active=True).order_by("id")
         context["cameras"] = user_cameras
 
-        # Active camera selection
+        # Service entitlement check for Traffic / Vehicles & People
+        profile = getattr(user, "service_profile", None)
+        has_access = profile.can_access("vehicles_people") if profile else True
+        context["has_service_access"] = has_access
+
+        # Check if single-camera view or multi-camera grid is requested
         camera_id = self.kwargs.get("camera_id") or self.request.GET.get("camera")
+        view_mode = self.request.GET.get("mode")
+
         if camera_id:
             try:
                 selected_camera = user_cameras.get(pk=int(camera_id))
-            except (Camera.DoesNotExist, ValueError):
-                selected_camera = user_cameras.first()
-        else:
-            selected_camera = user_cameras.first()
+                context["view_mode"] = "single"
+                context["selected_camera"] = selected_camera
 
-        context["selected_camera"] = selected_camera
+                # Load recent detection events for this specific camera
+                context["recent_detections"] = DetectionEvent.objects.filter(
+                    camera=selected_camera,
+                    user=user,
+                ).order_by("-created_at")[:30]
+            except (Camera.DoesNotExist, ValueError):
+                context["view_mode"] = "grid"
+                context["selected_camera"] = user_cameras.first()
+        elif view_mode == "single" and user_cameras.exists():
+            context["view_mode"] = "single"
+            context["selected_camera"] = user_cameras.first()
+            context["recent_detections"] = DetectionEvent.objects.filter(
+                camera=user_cameras.first(),
+                user=user,
+            ).order_by("-created_at")[:30]
+        else:
+            context["view_mode"] = "grid"
+            context["selected_camera"] = user_cameras.first()
+
         context["active_tab"] = "live"
         return context
 
 
-# ── 2. Review Tab ─────────────────────────────────────────────────────────────
+# ── 2. Face Recognition & Attendance Module ───────────────────────────────────
 
-def _load_events_from_logs(user_cameras, camera_filter=None, class_filter=None, limit=100) -> list[dict]:
-    """Helper to parse CSV detection logs into structured event objects."""
-    base_dir = getattr(settings, "BASE_DIR", Path(__file__).resolve().parent.parent)
-    events = []
+class FaceRecognitionView(LoginRequiredMixin, TemplateView):
+    """
+    Face Recognition & Biometric Attendance Tab for Colleges & Institutions.
+    Gated by user subscription entitlement.
+    """
 
-    for camera in user_cameras:
-        if camera_filter and str(camera.pk) != str(camera_filter):
-            continue
+    template_name = "nvr/face_recognition.html"
 
-        log_path = base_dir / "output" / "logs" / f"camera_{camera.pk}_detection_log.csv"
-        if not log_path.exists():
-            # Fallback to parent directory if running in root structure
-            log_path = base_dir.parent / "output" / "logs" / f"camera_{camera.pk}_detection_log.csv"
-            if not log_path.exists():
-                continue
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        profile = getattr(user, "service_profile", None)
+        has_access = profile.can_access("face_recognition") if profile else user.is_superuser
+        context["has_service_access"] = has_access
 
-        try:
-            with open(log_path, mode="r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    cls_name = row.get("class", "object").lower()
-                    if class_filter and class_filter.lower() != "all" and cls_name != class_filter.lower():
-                        continue
+        if not has_access:
+            context["service_key"] = "face_recognition"
+            context["service_title"] = "Face Recognition & Biometric Attendance"
+            context["service_desc"] = (
+                "Automate student and employee attendance logging through live facial recognition matching "
+                "against your uploaded reference directory. All biometric processing runs 100% locally on-premises."
+            )
+            return context
 
-                    # Calculate relative time formatting
-                    raw_ts = row.get("timestamp", "")
-                    rel_time = "Just now"
-                    try:
-                        dt = datetime.fromisoformat(raw_ts)
-                        diff = datetime.now() - dt
-                        if diff.total_seconds() < 60:
-                            rel_time = f"{int(diff.total_seconds())}s ago"
-                        elif diff.total_seconds() < 3600:
-                            rel_time = f"{int(diff.total_seconds() // 60)}m ago"
-                        else:
-                            rel_time = f"{int(diff.total_seconds() // 3600)}h ago"
-                    except Exception:
-                        pass
+        user_cameras = Camera.objects.filter(owner=user, is_active=True).order_by("id")
+        context["cameras"] = user_cameras
+        selected_cam_id = self.request.GET.get("camera")
+        if selected_cam_id:
+            try:
+                context["selected_camera"] = user_cameras.get(pk=int(selected_cam_id))
+            except (Camera.DoesNotExist, ValueError):
+                context["selected_camera"] = user_cameras.first()
+        else:
+            context["selected_camera"] = user_cameras.first()
 
-                    events.append({
-                        "camera_id": camera.pk,
-                        "camera_name": camera.name,
-                        "timestamp": raw_ts,
-                        "relative_time": rel_time,
-                        "frame_number": row.get("frame_number", "0"),
-                        "track_id": row.get("track_id", "-1"),
-                        "class": cls_name,
-                        "confidence": float(row.get("confidence", "0.0")),
-                        "confidence_pct": f"{float(row.get('confidence', '0.0')) * 100:.1f}%",
-                        "bbox": [
-                            float(row.get("x1", 0)),
-                            float(row.get("y1", 0)),
-                            float(row.get("x2", 0)),
-                            float(row.get("y2", 0)),
-                        ],
-                        "center": (float(row.get("center_x", 0)), float(row.get("center_y", 0))),
-                        "line_crossing_status": row.get("line_crossing_status", "none"),
-                        "snapshot_url": f"/media/snapshots/camera_{camera.pk}/snap_{row.get('frame_number', '1')}.jpg",
-                    })
-        except Exception:
-            continue
+        context["face_references"] = FaceReference.objects.filter(user=user).order_by("person_name")
+        context["attendance_logs"] = AttendanceRecord.objects.filter(user=user).order_by("-timestamp")[:50]
+        context["active_tab"] = "face_recognition"
+        return context
 
-    # Return newest events first
-    events.sort(key=lambda e: e["timestamp"], reverse=True)
-    return events[:limit]
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        profile = getattr(request.user, "service_profile", None)
+        if not (profile and profile.can_access("face_recognition")):
+            messages.error(request, "Service not enabled. Please contact sales to unlock Face Recognition.")
+            return redirect("nvr:face_recognition")
 
+        action = request.POST.get("action")
+        if action == "add_face":
+            name = request.POST.get("person_name", "").strip()
+            person_id = request.POST.get("person_id", "").strip()
+            dept = request.POST.get("department", "").strip()
+            photo = request.FILES.get("photo")
+
+            if name:
+                FaceReference.objects.create(
+                    user=request.user,
+                    person_name=name,
+                    person_id=person_id,
+                    department=dept,
+                    photo=photo,
+                )
+                messages.success(request, f"Reference face profile for '{name}' registered successfully.")
+            else:
+                messages.error(request, "Person name is required.")
+        elif action == "delete_face":
+            face_id = request.POST.get("face_id")
+            FaceReference.objects.filter(pk=face_id, user=request.user).delete()
+            messages.info(request, "Face reference profile deleted.")
+
+        return redirect("nvr:face_recognition")
+
+
+# ── 3. Industrial Object Counter Module ───────────────────────────────────────
+
+class ObjectCounterView(LoginRequiredMixin, TemplateView):
+    """
+    Industrial Object & Conveyor Production Counter for Manufacturing Plants.
+    Gated by user subscription entitlement.
+    """
+
+    template_name = "nvr/object_counter.html"
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        profile = getattr(user, "service_profile", None)
+        has_access = profile.can_access("object_count") if profile else user.is_superuser
+        context["has_service_access"] = has_access
+
+        if not has_access:
+            context["service_key"] = "object_count"
+            context["service_title"] = "Industrial Object & Production Counter"
+            context["service_desc"] = (
+                "Real-time item tallying, conveyor belt line-crossing detection, and yield throughput rate (PPM) "
+                "reporting engineered for factory assembly lines and logistics hubs."
+            )
+            return context
+
+        user_cameras = Camera.objects.filter(owner=user, is_active=True).order_by("id")
+        context["cameras"] = user_cameras
+        selected_cam_id = self.request.GET.get("camera")
+        if selected_cam_id:
+            try:
+                context["selected_camera"] = user_cameras.get(pk=int(selected_cam_id))
+            except (Camera.DoesNotExist, ValueError):
+                context["selected_camera"] = user_cameras.first()
+        else:
+            context["selected_camera"] = user_cameras.first()
+
+        context["count_records"] = ObjectCountRecord.objects.filter(user=user).order_by("-created_at")[:30]
+        context["active_tab"] = "object_counter"
+        return context
+
+
+# ── 4. Review Tab (Persisted Single-Object Snapshots per User) ─────────────────
 
 class ReviewView(LoginRequiredMixin, TemplateView):
     """
-    Review Tab: Chronological event timeline with snapshot gallery,
-    camera/class filters, and right-side interactive time density strip.
+    Review Tab: Chronological event timeline showing the single image snapshot
+    persisted for each detected object, strictly filtered per user.
     """
 
     template_name = "nvr/review.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
-        user_cameras = Camera.objects.filter(owner=self.request.user)
+        user = self.request.user
+        user_cameras = Camera.objects.filter(owner=user)
         context["cameras"] = user_cameras
 
         camera_filter = self.request.GET.get("camera")
         class_filter = self.request.GET.get("class")
         time_filter = self.request.GET.get("time", "24h")
 
-        events = _load_events_from_logs(user_cameras, camera_filter=camera_filter, class_filter=class_filter, limit=120)
+        # Query real DetectionEvent records belonging strictly to this user
+        qs = DetectionEvent.objects.filter(user=user).select_related("camera")
+        if camera_filter and camera_filter != "all":
+            qs = qs.filter(camera_id=camera_filter)
+        if class_filter and class_filter != "all":
+            qs = qs.filter(class_name__iexact=class_filter)
 
-        # Demo sample generator if no live events are logged yet
-        if not events:
+        db_events = qs.order_by("-created_at")[:120]
+        events = []
+
+        for e in db_events:
+            diff = now() - e.created_at
+            if diff.total_seconds() < 60:
+                rel_time = f"{int(diff.total_seconds())}s ago"
+            elif diff.total_seconds() < 3600:
+                rel_time = f"{int(diff.total_seconds() // 60)}m ago"
+            else:
+                rel_time = f"{int(diff.total_seconds() // 3600)}h ago"
+
+            events.append({
+                "camera_id": e.camera.pk,
+                "camera_name": e.camera.name,
+                "timestamp": e.created_at.isoformat(),
+                "relative_time": rel_time,
+                "frame_number": str(e.frame_number),
+                "track_id": str(e.track_id),
+                "class": e.class_name.lower(),
+                "confidence": e.confidence,
+                "confidence_pct": f"{e.confidence * 100:.1f}%",
+                "bbox": [e.bbox_x1, e.bbox_y1, e.bbox_x2, e.bbox_y2],
+                "center": ((e.bbox_x1 + e.bbox_x2) / 2, (e.bbox_y1 + e.bbox_y2) / 2),
+                "line_crossing_status": e.line_crossing_status,
+                "snapshot_url": e.snapshot_path,
+            })
+
+        # Fallback sample generator if user hasn't recorded events yet
+        if not events and not user.detections.exists():
             now_dt = datetime.now()
             classes = ["person", "car", "bicycle", "truck", "motorcycle", "person"]
             for i, cls in enumerate(classes):
@@ -195,27 +314,24 @@ class ReviewView(LoginRequiredMixin, TemplateView):
         return context
 
 
-# ── 3. Explore Tab ────────────────────────────────────────────────────────────
+# ── 5. Explore Tab (Categorized Object Gallery per User) ───────────────────────
 
 class ExploreView(LoginRequiredMixin, TemplateView):
     """
-    Explore Tab: Detections grouped by object class (Persons, Cars, Bicycles,
-    Trucks, Motorcycles, Buses) with horizontal thumbnail carousels and detail modal.
+    Explore Tab: Object classes categorized gallery based on user-stored snapshots.
     """
 
     template_name = "nvr/explore.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
-        user_cameras = Camera.objects.filter(owner=self.request.user)
+        user = self.request.user
+        user_cameras = Camera.objects.filter(owner=user)
         context["cameras"] = user_cameras
 
         query = self.request.GET.get("q", "").strip().lower()
         camera_filter = self.request.GET.get("camera")
 
-        all_events = _load_events_from_logs(user_cameras, camera_filter=camera_filter, limit=300)
-
-        # Build categorized buckets
         categories = {
             "person": {"name": "Persons", "icon": "person", "color": "#ffa856", "items": []},
             "car": {"name": "Cars", "icon": "directions_car", "color": "#a0ff3c", "items": []},
@@ -225,19 +341,33 @@ class ExploreView(LoginRequiredMixin, TemplateView):
             "bus": {"name": "Buses", "icon": "directions_bus", "color": "#ffc850", "items": []},
         }
 
-        # Populate events into categories
-        for event in all_events:
-            cls = event["class"].lower()
-            if query and query not in cls and query not in event.get("camera_name", "").lower():
+        # Query user detections
+        qs = DetectionEvent.objects.filter(user=user).select_related("camera")
+        if camera_filter and camera_filter != "all":
+            qs = qs.filter(camera_id=camera_filter)
+
+        for e in qs.order_by("-created_at")[:200]:
+            cls = e.class_name.lower()
+            if query and query not in cls and query not in e.camera.name.lower():
                 continue
 
             if cls in categories:
-                categories[cls]["items"].append(event)
+                categories[cls]["items"].append({
+                    "camera_name": e.camera.name,
+                    "timestamp": e.created_at.strftime("%H:%M:%S"),
+                    "relative_time": f"{e.created_at:%b %d, %H:%M}",
+                    "frame_number": str(e.frame_number),
+                    "track_id": str(e.track_id),
+                    "class": cls,
+                    "confidence_pct": f"{e.confidence * 100:.1f}%",
+                    "bbox": [e.bbox_x1, e.bbox_y1, e.bbox_x2, e.bbox_y2],
+                    "snapshot_url": e.snapshot_path,
+                })
 
-        # If categories are empty, seed sample exploration items
+        # Fallback items if categories are empty
         for cls, cat in categories.items():
             if not cat["items"]:
-                for i in range(4):
+                for i in range(3):
                     cat["items"].append({
                         "camera_name": "Primary Sensor",
                         "timestamp": (datetime.now() - timedelta(minutes=i * 15 + 5)).strftime("%H:%M:%S"),
@@ -257,25 +387,20 @@ class ExploreView(LoginRequiredMixin, TemplateView):
         return context
 
 
-# ── 4. Export Tab ─────────────────────────────────────────────────────────────
+# ── 6. Export Tab ─────────────────────────────────────────────────────────────
 
 class ExportView(LoginRequiredMixin, TemplateView):
-    """
-    Export Tab: Clip trimming, image snapshot extraction, and download history.
-    """
+    """Export Tab: Clip trimming, image snapshot extraction, and evidence download."""
 
     template_name = "nvr/export.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
-        user_cameras = Camera.objects.filter(owner=self.request.user)
-        context["cameras"] = user_cameras
+        user = self.request.user
+        context["cameras"] = Camera.objects.filter(owner=user)
 
-        # Load simulated and recent exports from output directory
         base_dir = getattr(settings, "BASE_DIR", Path(__file__).resolve().parent.parent)
         export_dir = base_dir / "output" / "video"
-        if not export_dir.exists():
-            export_dir = base_dir.parent / "output" / "video"
         export_history = []
 
         if export_dir.exists():
@@ -290,7 +415,6 @@ class ExportView(LoginRequiredMixin, TemplateView):
                     "status": "Ready",
                 })
 
-        # Add sample entries if empty
         if not export_history:
             export_history = [
                 {
@@ -300,14 +424,6 @@ class ExportView(LoginRequiredMixin, TemplateView):
                     "size": "12.4 MB",
                     "created_at": (datetime.now() - timedelta(hours=2)).strftime("%b %d, %Y %H:%M"),
                     "status": "Ready",
-                },
-                {
-                    "name": "incident_snapshot_frame_420.jpg",
-                    "camera": "Primary Sensor",
-                    "format": "JPEG Snapshot",
-                    "size": "450 KB",
-                    "created_at": (datetime.now() - timedelta(hours=5)).strftime("%b %d, %Y %H:%M"),
-                    "status": "Ready",
                 }
             ]
 
@@ -316,26 +432,22 @@ class ExportView(LoginRequiredMixin, TemplateView):
         return context
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        camera_id = request.POST.get("camera")
         export_type = request.POST.get("export_type", "video")
         messages.success(request, f"Export request queued successfully! Preparing {export_type.upper()} extraction.")
         return redirect("nvr:export")
 
 
-# ── 5. Settings Tab ───────────────────────────────────────────────────────────
+# ── 7. Settings Tab ───────────────────────────────────────────────────────────
 
 class SettingsView(LoginRequiredMixin, TemplateView):
-    """
-    Settings Tab: Camera stream configuration, YOLOv8 parameters,
-    device selection (CPU / GPU 0), and detection log management.
-    """
+    """Settings Tab: Camera streams and hardware detection configuration."""
 
     template_name = "nvr/settings.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
-        user_cameras = Camera.objects.filter(owner=self.request.user)
-        context["cameras"] = user_cameras
+        user = self.request.user
+        context["cameras"] = Camera.objects.filter(owner=user)
         context["yolo_model"] = getattr(settings, "YOLO_MODEL_PATH", "yolov8n.pt")
         context["yolo_conf"] = getattr(settings, "YOLO_CONF_THRESHOLD", 0.40)
         context["yolo_device"] = getattr(settings, "YOLO_DEVICE", "cpu")
@@ -363,15 +475,48 @@ class SettingsView(LoginRequiredMixin, TemplateView):
         return redirect("nvr:settings")
 
 
-# ── 6. Telemetry & Streaming Endpoints ────────────────────────────────────────
+# ── 8. Streaming & Telemetry Endpoints ────────────────────────────────────────
 
 class StreamView(LoginRequiredMixin, CameraOwnershipMixin, View):
-    """Serves real-time MJPEG video stream from frame_generator."""
+    """Serves real-time YOLOv8 + ByteTrack MJPEG video stream."""
 
     def get(self, request: HttpRequest, camera_id: int) -> HttpResponse:
         camera = self.get_camera(camera_id)
         return StreamingHttpResponse(
             frame_generator(camera),
+            content_type="multipart/x-mixed-replace; boundary=frame",
+        )
+
+
+class RawStreamView(LoginRequiredMixin, CameraOwnershipMixin, View):
+    """Serves plain raw video stream without AI inference for Multi-Camera Grid."""
+
+    def get(self, request: HttpRequest, camera_id: int) -> HttpResponse:
+        camera = self.get_camera(camera_id)
+        return StreamingHttpResponse(
+            raw_frame_generator(camera),
+            content_type="multipart/x-mixed-replace; boundary=frame",
+        )
+
+
+class FaceStreamView(LoginRequiredMixin, CameraOwnershipMixin, View):
+    """Serves biometric face detection and matching stream."""
+
+    def get(self, request: HttpRequest, camera_id: int) -> HttpResponse:
+        camera = self.get_camera(camera_id)
+        return StreamingHttpResponse(
+            face_recognition_frame_generator(camera),
+            content_type="multipart/x-mixed-replace; boundary=frame",
+        )
+
+
+class ObjectCounterStreamView(LoginRequiredMixin, CameraOwnershipMixin, View):
+    """Serves industrial conveyor counting stream."""
+
+    def get(self, request: HttpRequest, camera_id: int) -> HttpResponse:
+        camera = self.get_camera(camera_id)
+        return StreamingHttpResponse(
+            object_counter_frame_generator(camera),
             content_type="multipart/x-mixed-replace; boundary=frame",
         )
 
@@ -386,15 +531,7 @@ class StatsView(LoginRequiredMixin, CameraOwnershipMixin, View):
 
 
 class SystemStatusApiView(LoginRequiredMixin, View):
-    """
-    Returns telemetry data for the persistent bottom status bar:
-    - CPU %
-    - RAM %
-    - GPU / Accelerator status
-    - Active camera count
-    - Aggregate pipeline FPS
-    - System health indicator
-    """
+    """Returns system hardware telemetry data for persistent bottom status bar."""
 
     def get(self, request: HttpRequest) -> JsonResponse:
         cpu_percent = psutil.cpu_percent(interval=None)
@@ -429,7 +566,7 @@ class SystemStatusApiView(LoginRequiredMixin, View):
 
 
 class DetectionLogView(LoginRequiredMixin, CameraOwnershipMixin, TemplateView):
-    """Raw CSV log viewer for troubleshooting."""
+    """Detection log viewer."""
 
     template_name = "nvr/log.html"
 
@@ -437,11 +574,14 @@ class DetectionLogView(LoginRequiredMixin, CameraOwnershipMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         camera = self.get_camera(self.kwargs["camera_id"])
         context["camera"] = camera
+
+        # Load from DB DetectionEvents
+        events = DetectionEvent.objects.filter(camera=camera, user=self.request.user).order_by("-created_at")[:100]
+        context["log_events"] = events
+
+        # Also load CSV rows if available
         base_dir = getattr(settings, "BASE_DIR", Path(__file__).resolve().parent.parent)
         log_path = base_dir / "output" / "logs" / f"camera_{camera.pk}_detection_log.csv"
-        if not log_path.exists():
-            log_path = base_dir.parent / "output" / "logs" / f"camera_{camera.pk}_detection_log.csv"
-
         rows = []
         if log_path.exists():
             try:

@@ -45,7 +45,7 @@
             Tracking: {% if camera.tracker_enabled %}ByteTrack (Enabled){% else %}Detection Only{% endif %}
           </p>
           <div class="camera-card__actions">
-            <a href="{% url 'nvr:live' camera.id %}" class="btn btn--primary btn--sm" style="flex: 1;">
+            <a href="{% url 'nvr:camera_live' camera.id %}" class="btn btn--primary btn--sm" style="flex: 1;">
               <span class="material-symbols-outlined" style="font-size: 16px;">play_arrow</span>
               View Live
             </a>

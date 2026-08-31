@@ -1,7 +1,8 @@
-"""accounts/urls.py — Auth views using Django's built-in LoginView/LogoutView."""
+"""accounts/urls.py — Auth views including Registration and Login."""
 
 from django.contrib.auth import views as auth_views
 from django.urls import path
+from .views import RegisterView
 
 app_name = "accounts"
 
@@ -12,11 +13,16 @@ urlpatterns = [
         name="login",
     ),
     path(
+        "register/",
+        RegisterView.as_view(),
+        name="register",
+    ),
+    path(
         "logout/",
         auth_views.LogoutView.as_view(),
         name="logout",
     ),
-    # Password reset flow (scaffolded for later use)
+    # Password reset flow
     path(
         "password-reset/",
         auth_views.PasswordResetView.as_view(
