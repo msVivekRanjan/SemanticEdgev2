@@ -32,9 +32,9 @@ class CameraAdmin(admin.ModelAdmin):
 
 @admin.register(DetectionEvent)
 class DetectionEventAdmin(admin.ModelAdmin):
-    list_display = ("class_name", "track_id", "confidence", "camera", "user", "created_at", "snapshot_path")
+    list_display = ("class_name", "track_id", "confidence", "camera", "user", "description", "created_at", "snapshot_path")
     list_filter = ("class_name", "camera", "user")
-    search_fields = ("class_name", "track_id", "user__username")
+    search_fields = ("class_name", "track_id", "description", "user__username")
     readonly_fields = ("created_at",)
 
 

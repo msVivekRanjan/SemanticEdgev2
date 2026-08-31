@@ -5,49 +5,149 @@
 
 {% block nvr_content %}
 <!-- ── Top Search & Filter Bar ────────────────────────────────────────────── -->
-<div class="nvr-toolbar">
-  <div class="nvr-toolbar__title">
-    <span class="material-symbols-outlined" style="color: var(--primary);">travel_explore</span>
-    <span>Object Exploration</span>
+<div class="nvr-toolbar" style="flex-direction: column; gap: 10px; padding: 14px 16px; align-items: stretch; height: auto;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+    <div class="nvr-toolbar__title">
+      <span class="material-symbols-outlined" style="color: var(--primary);">travel_explore</span>
+      <span>Object Exploration</span>
+      {% if total_matches > 0 %}
+        <span class="nvr-count-chip" style="background: rgba(109,94,245,0.15);">{{ total_matches }} results</span>
+      {% endif %}
+    </div>
+    <a href="{% url 'nvr:export_csv' %}" class="btn btn--ghost btn--sm" title="Download all detection logs as CSV">
+      <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
+      <span>Export CSV Logs</span>
+    </a>
   </div>
 
-  <form method="get" class="nvr-filter-group" style="flex: 1; max-width: 600px; justify-content: flex-end;">
-    <!-- Search Input -->
-    <div style="position: relative; flex: 1; min-width: 180px;">
+  <!-- Advanced Multi-Parameter Search Form -->
+  <form method="get" id="explore-search-form" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; align-items: end;">
+
+    <!-- Keyword / Description Query -->
+    <div style="grid-column: 1 / -1; position: relative;">
       <input
         type="text"
         name="q"
         value="{{ search_query }}"
-        placeholder="Search objects, classes, cameras..."
+        placeholder='Search by object type, or description (e.g. "green shirt person", "red sedan")...'
         class="nvr-search-input"
-        style="width: 100%; padding-left: 32px;"
+        style="width: 100%; padding-left: 36px;"
+        autocomplete="off"
       />
-      <span class="material-symbols-outlined" style="position: absolute; left: 8px; top: 9px; font-size: 18px; color: var(--outline);">
+      <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 10px; font-size: 18px; color: var(--outline);">
         search
       </span>
     </div>
 
-    <!-- Camera Filter -->
-    <select name="camera" class="nvr-select" onchange="this.form.submit()">
-      <option value="all" {% if selected_camera == 'all' %}selected{% endif %}>All Cameras</option>
-      {% for cam in cameras %}
-        <option value="{{ cam.id }}" {% if selected_camera == cam.id|stringformat:"s" %}selected{% endif %}>
-          📹 {{ cam.name }}
-        </option>
-      {% endfor %}
-    </select>
+    <!-- Object Class Filter -->
+    <div>
+      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Object Class</label>
+      <select name="class" class="nvr-select" style="width: 100%; font-size: 12px;">
+        <option value="all" {% if selected_class == 'all' %}selected{% endif %}>All Classes</option>
+        <option value="person" {% if selected_class == 'person' %}selected{% endif %}>🚶 Person</option>
+        <option value="car" {% if selected_class == 'car' %}selected{% endif %}>🚗 Car</option>
+        <option value="truck" {% if selected_class == 'truck' %}selected{% endif %}>🚛 Truck</option>
+        <option value="bicycle" {% if selected_class == 'bicycle' %}selected{% endif %}>🚲 Bicycle</option>
+        <option value="motorcycle" {% if selected_class == 'motorcycle' %}selected{% endif %}>🏍️ Motorcycle</option>
+        <option value="bus" {% if selected_class == 'bus' %}selected{% endif %}>🚌 Bus</option>
+      </select>
+    </div>
 
-    <button type="submit" class="btn btn--primary btn--sm">Search</button>
+    <!-- Camera Filter -->
+    <div>
+      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Camera Source</label>
+      <select name="camera" class="nvr-select" style="width: 100%; font-size: 12px;">
+        <option value="all" {% if selected_camera == 'all' %}selected{% endif %}>All Cameras</option>
+        {% for cam in cameras %}
+          <option value="{{ cam.id }}" {% if selected_camera == cam.id|stringformat:"s" %}selected{% endif %}>
+            📹 {{ cam.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Date Range -->
+    <div>
+      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Date From</label>
+      <input type="date" name="date_from" value="{{ date_from }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
+    </div>
+
+    <div>
+      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Date To</label>
+      <input type="date" name="date_to" value="{{ date_to }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
+    </div>
+
+    <!-- Time Range -->
+    <div>
+      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Time From</label>
+      <input type="time" name="time_from" value="{{ time_from }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
+    </div>
+
+    <div>
+      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Time To</label>
+      <input type="time" name="time_to" value="{{ time_to }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
+    </div>
+
+    <!-- Search Action Buttons -->
+    <div style="display: flex; gap: 6px;">
+      <button type="submit" class="btn btn--primary btn--sm" style="flex: 1; white-space: nowrap; font-size: 12px;">
+        <span class="material-symbols-outlined" style="font-size: 14px;">search</span>
+        Search
+      </button>
+      <a href="{% url 'nvr:explore' %}" class="btn btn--ghost btn--sm" title="Clear all filters" style="white-space: nowrap; font-size: 12px;">
+        <span class="material-symbols-outlined" style="font-size: 14px;">filter_alt_off</span>
+        Clear
+      </a>
+    </div>
+
   </form>
+
+  <!-- Active Filter Chips (visual indicators) -->
+  {% if search_query or date_from or date_to or time_from or time_to or selected_class != 'all' or selected_camera != 'all' %}
+  <div style="display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px;">
+    <span style="font-size: 10px; color: var(--outline); padding: 2px 0; align-self: center;">Active filters:</span>
+    {% if search_query %}
+      <span style="background: rgba(109,94,245,0.2); color: var(--primary); font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(109,94,245,0.3);">
+        "{{ search_query }}"
+      </span>
+    {% endif %}
+    {% if selected_class != 'all' %}
+      <span style="background: rgba(160,255,60,0.15); color: #a0ff3c; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(160,255,60,0.3);">
+        Class: {{ selected_class }}
+      </span>
+    {% endif %}
+    {% if date_from %}
+      <span style="background: rgba(60,200,255,0.15); color: #3cc8ff; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(60,200,255,0.3);">
+        From: {{ date_from }}
+      </span>
+    {% endif %}
+    {% if date_to %}
+      <span style="background: rgba(60,200,255,0.15); color: #3cc8ff; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(60,200,255,0.3);">
+        To: {{ date_to }}
+      </span>
+    {% endif %}
+    {% if time_from %}
+      <span style="background: rgba(255,168,86,0.15); color: var(--tertiary); font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(255,168,86,0.3);">
+        After: {{ time_from }}
+      </span>
+    {% endif %}
+    {% if time_to %}
+      <span style="background: rgba(255,168,86,0.15); color: var(--tertiary); font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(255,168,86,0.3);">
+        Before: {{ time_to }}
+      </span>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 
 <!-- ── Object Categories Gallery (Horizontal Strips) ─────────────────────── -->
-<div>
+<div style="padding: 0 4px;">
   {% for key, cat in categories.items %}
+    {% if cat.items %}
     <section class="nvr-explore-section">
       <div class="nvr-explore-section__header">
         <div class="nvr-explore-section__title">
-          <span class="material-symbols-outlined" style="color: {{ cat.color }};">{{ cat.icon }}</span>
+          <span class="material-symbols-outlined" style="color: {{ cat.color }};font-size:18px;">{{ cat.icon }}</span>
           <span>{{ cat.name }}</span>
           <span class="nvr-count-chip">{{ cat.items|length }} Detected</span>
         </div>
@@ -60,7 +160,8 @@
       <div class="nvr-horizontal-strip">
         {% for item in cat.items %}
           <div class="nvr-object-card"
-               onclick='openDetailModal({{ item|safe|default:"{}" }})'>
+               onclick="openDetailModal({{ item.id }}, '{{ item.class }}', '{{ item.timestamp }}', '{{ item.camera_name }}', '{{ item.confidence_pct }}', '{{ item.track_id }}', '{{ item.snapshot_url }}', '{{ item.description|escapejs }}', {{ item.bbox }}, '{{ item.line_crossing_status }}')"
+               style="cursor: pointer;">
             <div class="nvr-object-card__preview">
               {% if item.snapshot_url %}
                 <img src="{{ item.snapshot_url }}"
@@ -84,14 +185,31 @@
                 <span>{{ cat.name|slice:":-1"|default:cat.name }}</span>
                 <span style="color: var(--outline); font-size: 11px; font-family: var(--font-mono);">{{ item.relative_time }}</span>
               </div>
-              <p style="font-size: 11px; color: var(--outline); font-family: var(--font-mono); margin: 0;">
+              <p style="font-size: 11px; color: var(--outline); font-family: var(--font-mono); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 {{ item.camera_name }}
               </p>
+              {% if item.description %}
+                <p style="font-size: 10px; color: var(--on-surface-variant); margin: 2px 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic;">
+                  "{{ item.description|truncatechars:40 }}"
+                </p>
+              {% endif %}
             </div>
           </div>
         {% endfor %}
       </div>
     </section>
+    {% endif %}
   {% endfor %}
+
+  {% if total_matches == 0 and search_query %}
+    <div class="empty-state" style="margin-top: 40px;">
+      <span class="material-symbols-outlined" style="font-size: 48px; color: var(--outline);">search_off</span>
+      <h3 class="empty-state__title">No Results Found</h3>
+      <p class="empty-state__body">
+        No detections match "<strong>{{ search_query }}</strong>"{% if date_from %} from {{ date_from }}{% endif %}{% if date_to %} to {{ date_to }}{% endif %}.
+        <br>Try broadening your search or <a href="{% url 'nvr:explore' %}" style="color: var(--primary);">clearing all filters</a>.
+      </p>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

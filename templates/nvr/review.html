@@ -54,7 +54,9 @@
     {% if events %}
       {% for event in events %}
         <div class="nvr-event-card"
-             onclick='openDetailModal({{ event|safe|default:"{}" }})'>
+             data-event-id="{{ event.id }}"
+             onclick="openDetailModal({{ event.id }}, '{{ event.class }}', '{{ event.timestamp }}', '{{ event.camera_name }}', '{{ event.confidence_pct }}', '{{ event.track_id }}', '{{ event.snapshot_url }}', '{{ event.description|escapejs }}', {{ event.bbox }}, '{{ event.line_crossing_status }}')"
+             style="cursor: pointer;">
           <div class="nvr-event-card__thumbnail">
             {% if event.snapshot_url %}
               <img src="{{ event.snapshot_url }}"

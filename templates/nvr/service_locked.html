@@ -1,11 +1,6 @@
-{% extends "nvr/base_nvr.html" %}
 {% load static %}
-
-{% block title %}{{ service_title }} — Service Locked{% endblock %}
-
-{% block nvr_content %}
 <div style="display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 160px); padding: 24px;">
-  <div class="card card--dark" style="max-width: 600px; text-align: center; padding: 48px 36px; border: 1px solid rgba(109, 94, 245, 0.3); box-shadow: 0 24px 60px rgba(0,0,0,0.6); position: relative; overflow: hidden;">
+  <div class="card card--dark" style="max-width: 620px; text-align: center; padding: 48px 36px; border: 1px solid rgba(109, 94, 245, 0.3); box-shadow: 0 24px 60px rgba(0,0,0,0.6); position: relative; overflow: hidden;">
 
     <!-- Glowing top bar -->
     <div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--primary), var(--tertiary));"></div>
@@ -21,11 +16,11 @@
     </span>
 
     <h1 style="font-size: 26px; font-weight: 800; color: var(--on-surface); margin-bottom: 12px;">
-      {{ service_title }}
+      {{ service_title|default:"Enterprise Vision Service" }}
     </h1>
 
     <p style="font-size: 14px; font-weight: 300; color: var(--on-surface-variant); line-height: 1.8; margin-bottom: 32px;">
-      {{ service_desc }}
+      {{ service_desc|default:"This edge AI service is not activated on your current license. Reach out to activate this intelligence module on your on-premises edge deployment." }}
     </p>
 
     <div style="background: rgba(0,0,0,0.35); border-radius: var(--radius); padding: 16px 20px; border: 1px solid rgba(255,255,255,0.06); text-align: left; margin-bottom: 32px; font-size: 13px; color: var(--on-surface-variant);">
@@ -33,12 +28,12 @@
         <span class="material-symbols-outlined" style="font-size: 16px; color: var(--success);">verified</span>
         How to access this service:
       </div>
-      <div>1. Reach out to our solutions team via the demo request form.</div>
-      <div>2. Our team or your organization administrator will enable the service profile for your account.</div>
+      <div>1. Submit your project requirements via the Book a Demo inquiry form.</div>
+      <div>2. An administrator or solutions engineer will enable the entitlement flag for your account in the admin console.</div>
     </div>
 
     <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
-      <a href="{% url 'core:book_demo' %}?service={{ service_key }}" class="btn btn--primary btn--hero" style="min-width: 200px;">
+      <a href="{% url 'core:book_demo' %}?service={{ service_key|default:'general' }}" class="btn btn--primary btn--hero" style="min-width: 200px;">
         <span>Book a Demo to Unlock</span>
         <span class="material-symbols-outlined">arrow_forward</span>
       </a>
@@ -49,4 +44,3 @@
 
   </div>
 </div>
-{% endblock %}

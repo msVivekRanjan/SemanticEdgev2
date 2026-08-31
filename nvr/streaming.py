@@ -293,7 +293,19 @@ def frame_generator(camera: "Camera") -> Generator[bytes, None, None]:
                         ts_str = str(int(time.time()))
                         snap_filename = f"obj_{tid}_{cls_name}_{ts_str}_{frame_number}.jpg"
                         snap_filepath = media_dir / snap_filename
-                        cv2.imwrite(str(snap_filepath), clean_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+
+                        # ── Crop snapshot to bounding box (with padding) ──
+                        h_f, w_f = clean_frame.shape[:2]
+                        pad = 10  # pixel padding around bbox
+                        x1c = max(0, int(bbox[0]) - pad)
+                        y1c = max(0, int(bbox[1]) - pad)
+                        x2c = min(w_f, int(bbox[2]) + pad)
+                        y2c = min(h_f, int(bbox[3]) + pad)
+                        cropped = clean_frame[y1c:y2c, x1c:x2c]
+                        if cropped.size > 0:
+                            cv2.imwrite(str(snap_filepath), cropped, [cv2.IMWRITE_JPEG_QUALITY, 88])
+                        else:
+                            cv2.imwrite(str(snap_filepath), clean_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
                         rel_media_url = f"/media/detections/user_{camera.owner_id}/camera_{camera.pk}/{snap_filename}"
                         DetectionEvent.objects.create(

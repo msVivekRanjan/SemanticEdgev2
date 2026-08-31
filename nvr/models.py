@@ -79,6 +79,11 @@ class DetectionEvent(models.Model):
         blank=True,
         help_text="Relative media path to the saved object snapshot.",
     )
+    description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Natural-language description for Qwen-VL or manual annotation.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

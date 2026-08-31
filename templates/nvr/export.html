@@ -10,40 +10,79 @@
     <span class="material-symbols-outlined" style="color: var(--primary);">ios_share</span>
     <span>Export Evidence</span>
   </div>
+  <a href="{% url 'nvr:export_csv' %}" class="btn btn--ghost btn--sm" title="Download all detection records as CSV">
+    <span class="material-symbols-outlined" style="font-size: 16px;">table_view</span>
+    <span>Export Detection Logs (CSV)</span>
+  </a>
 </div>
 
 <div style="display: grid; grid-template-columns: 1fr; gap: var(--space-lg);">
   {% if cameras %}
     <div style="display: grid; grid-template-columns: 1fr; gap: var(--space-lg);">
       <!-- Exporter Form Card -->
-      <div class="card card--dark" style="max-width: 720px;">
+      <div class="card card--dark" style="max-width: 760px;">
         <div class="stats-panel__title" style="display:flex; align-items:center; gap:8px;">
           <span class="material-symbols-outlined" style="color:var(--primary); font-size:18px;">video_file</span>
-          <span>New Clip / Snapshot Extraction</span>
+          <span>New Clip / Video Inference Extraction</span>
         </div>
 
-        <form method="post" style="display: flex; flex-direction: column; gap: var(--space-md); margin-top: 14px;">
+        <form method="post" id="export-form" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: var(--space-md); margin-top: 14px;">
           {% csrf_token %}
 
-          <!-- Camera Selection -->
+          <!-- Camera / Upload Selection -->
           <div>
             <label class="input-label">Select Source Camera</label>
-            <select name="camera" class="nvr-select" style="width: 100%;">
+            <select name="camera" id="camera-select" class="nvr-select" style="width: 100%;" onchange="handleSourceChange(this.value)">
               {% for cam in cameras %}
                 <option value="{{ cam.id }}">📹 {{ cam.name }} ({{ cam.source_url }})</option>
               {% endfor %}
+              <option value="upload_video">📤 Upload Custom Video File...</option>
             </select>
           </div>
 
-          <!-- Date & Time Range -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
-            <div>
-              <label class="input-label">Start Time</label>
-              <input type="datetime-local" name="start_time" class="nvr-select" style="width: 100%;" required />
+          <!-- Video File Upload Section (shown conditionally) -->
+          <div id="video-upload-section" style="display: none;">
+            <div style="border: 2px dashed rgba(109,94,245,0.4); border-radius: var(--radius); padding: 24px; text-align: center; cursor: pointer; transition: border-color 0.2s; background: rgba(109,94,245,0.05);"
+                 id="drop-zone"
+                 ondragover="event.preventDefault(); this.style.borderColor='var(--primary)';"
+                 ondragleave="this.style.borderColor='rgba(109,94,245,0.4)';"
+                 ondrop="handleDrop(event)">
+              <span class="material-symbols-outlined" style="font-size: 40px; color: var(--primary); opacity: 0.7; display: block; margin-bottom: 8px;">cloud_upload</span>
+              <p style="font-size: 14px; color: var(--on-surface-variant); margin: 0 0 8px 0;">
+                Drag & drop video file here, or <label for="video-file-input" style="color: var(--primary); cursor: pointer; text-decoration: underline;">browse</label>
+              </p>
+              <p style="font-size: 11px; color: var(--outline); margin: 0;">Supported: .mp4, .avi, .mov, .mkv, .webm</p>
+              <input type="file" name="video_file" id="video-file-input" accept="video/*" style="display: none;" onchange="showSelectedFile(this)" />
             </div>
-            <div>
-              <label class="input-label">End Time</label>
-              <input type="datetime-local" name="end_time" class="nvr-select" style="width: 100%;" required />
+            <div id="selected-file-info" style="display: none; margin-top: 8px; padding: 10px 14px; background: rgba(109,94,245,0.1); border-radius: var(--radius); border: 1px solid rgba(109,94,245,0.3);">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--on-surface);">
+                <span class="material-symbols-outlined" style="color: var(--primary); font-size: 20px;">video_file</span>
+                <span id="selected-file-name">video.mp4</span>
+                <span id="selected-file-size" style="color: var(--outline); font-size: 11px; font-family: var(--font-mono);"></span>
+              </div>
+            </div>
+
+            <!-- Processing Info -->
+            <div style="display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; background: rgba(0,0,0,0.3); border-radius: var(--radius); border-left: 3px solid var(--tertiary); margin-top: 10px; font-size: 12px; color: var(--on-surface-variant);">
+              <span class="material-symbols-outlined" style="color: var(--tertiary); font-size: 16px; margin-top: 1px;">info</span>
+              <span>
+                The uploaded video will be processed locally through the full <strong>YOLOv8 + ByteTrack</strong> pipeline.
+                All detected objects will be saved to <strong>Explore & Review</strong>, and you'll receive an annotated MP4 with bounding box overlays ready to download.
+              </span>
+            </div>
+          </div>
+
+          <!-- Date & Time Range (for live camera clip extraction) -->
+          <div id="time-range-section">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+              <div>
+                <label class="input-label">Start Time</label>
+                <input type="datetime-local" name="start_time" class="nvr-select" style="width: 100%;" />
+              </div>
+              <div>
+                <label class="input-label">End Time</label>
+                <input type="datetime-local" name="end_time" class="nvr-select" style="width: 100%;" />
+              </div>
             </div>
           </div>
 
@@ -63,25 +102,30 @@
           </div>
 
           <!-- Submit Button -->
-          <div style="margin-top: 8px;">
-            <button type="submit" class="btn btn--primary">
-              <span class="material-symbols-outlined" style="font-size: 18px;">download</span>
-              Queue Export Task
+          <div style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="submit" class="btn btn--primary" id="submit-btn">
+              <span class="material-symbols-outlined" style="font-size: 18px;">smart_display</span>
+              <span id="submit-label">Queue Export Task</span>
             </button>
+            <a href="{% url 'nvr:export_csv' %}" class="btn btn--ghost">
+              <span class="material-symbols-outlined" style="font-size: 18px;">download</span>
+              <span>Download All Logs (CSV)</span>
+            </a>
           </div>
         </form>
       </div>
 
       <!-- Export History Table -->
-      <div class="card card--dark" style="padding: 0; overflow-x: auto;">
-        <div style="padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; font-weight: 700; color: var(--on-surface); text-transform: uppercase; letter-spacing: 0.05em;">
-          Export History &amp; Evidence Repository
+      <div class="card card--dark" style="padding: 0; overflow-x: auto; max-width: 760px;">
+        <div style="padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; font-weight: 700; color: var(--on-surface); text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: space-between; align-items: center;">
+          <span>Export History & Evidence Repository</span>
+          <span style="font-size: 11px; color: var(--outline); font-family: var(--font-mono); font-weight: 400; text-transform: none;">{{ export_history|length }} files</span>
         </div>
         <table class="log-table">
           <thead>
             <tr>
               <th>File Name</th>
-              <th>Camera</th>
+              <th>Camera / Source</th>
               <th>Format</th>
               <th>File Size</th>
               <th>Exported On</th>
@@ -92,21 +136,21 @@
           <tbody>
             {% for item in export_history %}
               <tr>
-                <td style="color: var(--on-surface); font-weight: 500;">{{ item.name }}</td>
+                <td style="color: var(--on-surface); font-weight: 500; font-family: var(--font-mono); font-size: 11px;">{{ item.name }}</td>
                 <td>{{ item.camera }}</td>
                 <td>{{ item.format }}</td>
-                <td>{{ item.size }}</td>
-                <td>{{ item.created_at }}</td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">{{ item.size }}</td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">{{ item.created_at }}</td>
                 <td>
                   <span style="color: var(--success); font-family: var(--font-mono); font-size: 11px;">
                     ● {{ item.status }}
                   </span>
                 </td>
                 <td>
-                  <button class="btn btn--ghost btn--sm" onclick="alert('Downloading evidence archive: {{ item.name }}')">
+                  <a href="{{ item.url|default:'#' }}" download="{{ item.name }}" class="btn btn--ghost btn--sm">
                     <span class="material-symbols-outlined" style="font-size: 14px;">download</span>
                     Download
-                  </button>
+                  </a>
                 </td>
               </tr>
             {% endfor %}
@@ -118,8 +162,60 @@
     <div class="empty-state">
       <span class="material-symbols-outlined">video_file</span>
       <h3 class="empty-state__title">No Cameras Available for Export</h3>
-      <p class="empty-state__body">Configure a camera feed to record and extract video clips.</p>
+      <p class="empty-state__body">Configure a camera feed to record and extract video clips. You can still upload a video file using the "Upload Custom Video File" option above.</p>
     </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function handleSourceChange(value) {
+  const uploadSection = document.getElementById('video-upload-section');
+  const timeSection = document.getElementById('time-range-section');
+  const submitLabel = document.getElementById('submit-label');
+
+  if (value === 'upload_video') {
+    uploadSection.style.display = 'block';
+    timeSection.style.display = 'none';
+    submitLabel.textContent = 'Process Uploaded Video';
+  } else {
+    uploadSection.style.display = 'none';
+    timeSection.style.display = 'block';
+    submitLabel.textContent = 'Queue Export Task';
+  }
+}
+
+function showSelectedFile(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const sizeStr = file.size > 1024 * 1024
+      ? (file.size / (1024 * 1024)).toFixed(2) + ' MB'
+      : (file.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('selected-file-name').textContent = file.name;
+    document.getElementById('selected-file-size').textContent = `(${sizeStr})`;
+    document.getElementById('selected-file-info').style.display = 'block';
+  }
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  document.getElementById('drop-zone').style.borderColor = 'rgba(109,94,245,0.4)';
+  const files = event.dataTransfer.files;
+  if (files.length > 0) {
+    const input = document.getElementById('video-file-input');
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    input.files = dt.files;
+    showSelectedFile(input);
+  }
+}
+
+// Label video file picker on click to drop zone
+document.getElementById('drop-zone').addEventListener('click', function(e) {
+  if (e.target !== document.getElementById('video-file-input')) {
+    document.getElementById('video-file-input').click();
+  }
+});
+</script>
 {% endblock %}

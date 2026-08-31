@@ -11,8 +11,7 @@
     content="{% block meta_description %}SemanticEdge is an open-source NVR built around real-time AI object detection and custom edge vision services.{% endblock %}" />
 
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml"
-    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%236d5ef5'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='16' fill='white' text-anchor='middle'%3ESE%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}" />
 
   <!-- Design system CSS -->
   <link rel="stylesheet" href="{% static 'css/design.css' %}" />
@@ -29,8 +28,11 @@
   <nav class="nav" aria-label="Main navigation">
     <div class="nav__inner">
 
-      <!-- Logo / wordmark -->
-      <a href="{% url 'core:home' %}" class="nav__logo">SemanticEdge</a>
+      <!-- Logo / wordmark with modern AI reticle icon -->
+      <a href="{% url 'core:home' %}" class="nav__logo" style="display: flex; align-items: center; gap: 10px;">
+        <img src="{% static 'img/logo.svg' %}" alt="SemanticEdge Logo" style="width: 26px; height: 26px;" />
+        <span>SemanticEdge</span>
+      </a>
 
       <!-- Desktop links -->
       <div class="nav__links" role="list">

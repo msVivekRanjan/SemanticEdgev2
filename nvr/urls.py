@@ -6,8 +6,10 @@ Routes for the professional NVR dashboard tabs, Edge AI services, and streaming 
 
 from django.urls import path
 from .views import (
+    DeleteDetectionApiView,
     DetectionLogView,
     ExploreView,
+    ExportCsvLogView,
     ExportView,
     FaceRecognitionView,
     FaceStreamView,
@@ -20,6 +22,7 @@ from .views import (
     StatsView,
     StreamView,
     SystemStatusApiView,
+    UpdateDetectionDescriptionApiView,
 )
 
 app_name = "nvr"
@@ -39,6 +42,7 @@ urlpatterns = [
     path("review/", ReviewView.as_view(), name="review"),
     path("explore/", ExploreView.as_view(), name="explore"),
     path("export/", ExportView.as_view(), name="export"),
+    path("export/csv/", ExportCsvLogView.as_view(), name="export_csv"),
     path("settings/", SettingsView.as_view(), name="settings"),
 
     # Video streaming & Telemetry
@@ -51,4 +55,8 @@ urlpatterns = [
 
     # Persistent status bar API
     path("api/system-status/", SystemStatusApiView.as_view(), name="system_status"),
+
+    # Detection Event Action APIs
+    path("api/detection/<int:event_id>/update-description/", UpdateDetectionDescriptionApiView.as_view(), name="api_update_description"),
+    path("api/detection/<int:event_id>/delete/", DeleteDetectionApiView.as_view(), name="api_delete_detection"),
 ]
