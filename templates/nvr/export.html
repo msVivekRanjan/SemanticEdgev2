@@ -66,9 +66,29 @@
             <div style="display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; background: rgba(0,0,0,0.3); border-radius: var(--radius); border-left: 3px solid var(--tertiary); margin-top: 10px; font-size: 12px; color: var(--on-surface-variant);">
               <span class="material-symbols-outlined" style="color: var(--tertiary); font-size: 16px; margin-top: 1px;">info</span>
               <span>
-                The uploaded video will be processed locally through the full <strong>YOLOv8 + ByteTrack</strong> pipeline.
-                All detected objects will be saved to <strong>Explore & Review</strong>, and you'll receive an annotated MP4 with bounding box overlays ready to download.
+                The uploaded video will be processed through the full <strong>YOLOv8 + ByteTrack</strong> pipeline and you'll receive an annotated MP4 with bounding box overlays.
               </span>
+            </div>
+
+            <!-- Processing Mode — Video Only vs. Also Save to Logs -->
+            <div style="margin-top: 10px;">
+              <label class="input-label" style="display: block; margin-bottom: 6px;">Processing Mode</label>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px;">
+                  <input type="radio" name="processing_mode" value="video_only" checked style="margin-top: 2px;" />
+                  <div>
+                    <strong style="color: var(--on-surface);">Generate Annotated Video Only</strong>
+                    <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--outline);">Process the video and download the annotated MP4. Detections are NOT saved to Explore / Review logs.</p>
+                  </div>
+                </label>
+                <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13px;">
+                  <input type="radio" name="processing_mode" value="video_and_logs" style="margin-top: 2px;" />
+                  <div>
+                    <strong style="color: var(--on-surface);">Generate Video + Save to Logs</strong>
+                    <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--outline);">Process the video AND persist each detected object snapshot to Explore / Review for future reference.</p>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
 

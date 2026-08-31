@@ -81,184 +81,231 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ── 3. Enhanced Object Detail Modal ──────────────────────────────────────
+  // ── 3. Enhanced Object Detail Modal ────────────────────────────────────
   const modalBackdrop = document.getElementById('nvr-detail-modal');
   const modalCloseBtn = document.getElementById('modal-close-btn');
 
   let _currentEventId = null;
 
+  function getCsrf() {
+    return document.cookie.split('; ').find(r => r.startsWith('csrftoken='))?.split('=')[1] || '';
+  }
+
   if (modalBackdrop) {
 
     /**
-     * openDetailModal(eventId, className, timestamp, cameraName, confPct,
-     *                 trackId, snapshotUrl, description, bbox, lineStatus)
+     * openDetailModalFromEl(el)
+     * Reads event data from element's dataset attributes.
+     * Guaranteed fail-safe against string formatting or JSON parse errors.
      */
+    window.openDetailModalFromEl = function(el) {
+      if (!el) return;
+      const ds = el.dataset || {};
+      let bbox = [];
+      if (ds.bboxX1 !== undefined && ds.bboxX1 !== '') {
+        bbox = [
+          parseFloat(ds.bboxX1) || 0,
+          parseFloat(ds.bboxY1) || 0,
+          parseFloat(ds.bboxX2) || 0,
+          parseFloat(ds.bboxY2) || 0,
+        ];
+      }
+
+      // Backward-compatible fallback to data-event if present
+      if (!ds.eventId && el.getAttribute('data-event')) {
+        try {
+          const d = JSON.parse(el.getAttribute('data-event'));
+          _openModal(d);
+          return;
+        } catch (_) {}
+      }
+
+      _openModal({
+        id: ds.eventId ? parseInt(ds.eventId, 10) : null,
+        class: ds.class || 'object',
+        timestamp: ds.timestamp || 'N/A',
+        camera_name: ds.camera || '—',
+        confidence_pct: ds.confidence || '—',
+        track_id: ds.track || 'None',
+        snapshot_url: ds.snapshot || '',
+        description: ds.desc || '',
+        bbox: bbox,
+        line_crossing_status: ds.line || 'none',
+      });
+    };
+
+    // Legacy positional-arg form kept for backward compat
     window.openDetailModal = function(eventId, className, timestamp, cameraName, confPct,
                                       trackId, snapshotUrl, description, bbox, lineStatus) {
+      _openModal({ id: eventId, class: className, timestamp, camera_name: cameraName,
+                   confidence_pct: confPct, track_id: trackId, snapshot_url: snapshotUrl,
+                   description, bbox, line_crossing_status: lineStatus });
+    };
 
-      _currentEventId = eventId;
+    function _openModal(data) {
+      _currentEventId = data.id || null;
 
       // Title
       const titleEl = document.getElementById('modal-title');
-      if (titleEl) titleEl.textContent = `${(className || 'Object').charAt(0).toUpperCase() + (className || 'Object').slice(1)} Detection — Event #${eventId}`;
+      const cls = (data.class || 'object');
+      if (titleEl) titleEl.textContent = `${cls.charAt(0).toUpperCase() + cls.slice(1)} Detection — Event #${data.id || '?'}`;
 
       // Class badge
       const badgeEl = document.getElementById('modal-class-badge');
-      if (badgeEl) badgeEl.textContent = (className || 'OBJECT').toUpperCase();
+      if (badgeEl) badgeEl.textContent = cls.toUpperCase();
 
       // Snapshot image
-      const imgEl    = document.getElementById('modal-snapshot-img');
-      const noImgEl  = document.getElementById('modal-no-img');
-      if (snapshotUrl && snapshotUrl.trim() && snapshotUrl !== 'None') {
-        imgEl.src = snapshotUrl;
+      const imgEl   = document.getElementById('modal-snapshot-img');
+      const noImgEl = document.getElementById('modal-no-img');
+      const snap    = (data.snapshot_url || '').trim();
+      if (snap && snap !== 'None' && snap !== '') {
+        imgEl.src = snap;
         imgEl.style.display = 'block';
-        noImgEl.style.display = 'none';
+        if (noImgEl) noImgEl.style.display = 'none';
       } else {
         imgEl.style.display = 'none';
-        noImgEl.style.display = 'flex';
+        if (noImgEl) noImgEl.style.display = 'flex';
       }
 
-      // Metadata rows
-      const timeEl   = document.getElementById('modal-time');
-      const camEl    = document.getElementById('modal-camera');
-      const confEl   = document.getElementById('modal-conf');
-      const trackEl  = document.getElementById('modal-track');
-      const bboxEl   = document.getElementById('modal-bbox');
-      const lineEl   = document.getElementById('modal-line');
-
-      if (timeEl)  timeEl.textContent  = timestamp   || 'N/A';
-      if (camEl)   camEl.textContent   = cameraName  || '—';
-      if (confEl)  confEl.textContent  = confPct     || '—';
-      if (trackEl) trackEl.textContent = trackId > 0 ? `#${trackId}` : 'None';
-      if (bboxEl)  bboxEl.textContent  = bbox        ? `[${bbox.join(', ')}]` : 'N/A';
-      if (lineEl)  lineEl.textContent  = lineStatus  || 'none';
+      // Metadata
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('modal-time',   data.timestamp    || 'N/A');
+      set('modal-camera', data.camera_name  || '—');
+      set('modal-conf',   data.confidence_pct || '—');
+      const tid = parseInt(data.track_id);
+      set('modal-track',  (!isNaN(tid) && tid > 0) ? `#${tid}` : 'None');
+      const bbox = Array.isArray(data.bbox) ? data.bbox : [];
+      set('modal-bbox',   bbox.length ? `[${bbox.map(v => Math.round(v)).join(', ')}]` : 'N/A');
+      set('modal-line',   data.line_crossing_status || 'none');
 
       // Description textarea
       const descInput = document.getElementById('modal-desc-input');
-      if (descInput) descInput.value = description || '';
+      if (descInput) descInput.value = data.description || '';
 
-      // Download button href
+      // Download button
       const downloadBtn = document.getElementById('modal-download-btn');
       if (downloadBtn) {
-        if (snapshotUrl && snapshotUrl.trim() && snapshotUrl !== 'None') {
-          downloadBtn.href = snapshotUrl;
+        if (snap && snap !== 'None' && snap !== '') {
+          downloadBtn.href = snap;
+          downloadBtn.download = `detection_${data.id || 'event'}.jpg`;
           downloadBtn.style.opacity = '1';
           downloadBtn.style.pointerEvents = 'auto';
         } else {
           downloadBtn.href = '#';
-          downloadBtn.style.opacity = '0.4';
+          downloadBtn.style.opacity = '0.35';
           downloadBtn.style.pointerEvents = 'none';
         }
       }
 
-      // Reset save button text
-      const saveDescBtn = document.getElementById('modal-save-desc-btn');
-      if (saveDescBtn) {
-        saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px;">save</span><span>Update Description</span>';
-        saveDescBtn.disabled = false;
+      // Reset Save Description button
+      const saveBtn = document.getElementById('modal-save-desc-btn');
+      if (saveBtn) {
+        saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">save</span><span>Update Description</span>';
+        saveBtn.disabled = false;
+      }
+
+      // Reset Delete button
+      const delBtn = document.getElementById('modal-delete-btn');
+      if (delBtn) {
+        delBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">delete</span><span>Delete Event</span>';
+        delBtn.disabled = false;
       }
 
       modalBackdrop.classList.add('is-open');
-    };
+      modalBackdrop.setAttribute('aria-hidden', 'false');
+    }
 
     // Close Handlers
     function closeModal() {
       modalBackdrop.classList.remove('is-open');
+      modalBackdrop.setAttribute('aria-hidden', 'true');
       _currentEventId = null;
     }
 
-    if (modalCloseBtn) {
-      modalCloseBtn.addEventListener('click', closeModal);
-    }
-    modalBackdrop.addEventListener('click', (e) => {
-      if (e.target === modalBackdrop) closeModal();
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeModal();
-    });
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', e => { if (e.target === modalBackdrop) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-    // ── Save Description via AJAX ──────────────────────────────────────
+    // ── Save Description via AJAX ───────────────────────────────────────
     const saveDescBtn = document.getElementById('modal-save-desc-btn');
     if (saveDescBtn) {
       saveDescBtn.addEventListener('click', async () => {
         if (!_currentEventId) return;
-
         const descInput = document.getElementById('modal-desc-input');
         const desc = descInput ? descInput.value.trim() : '';
 
-        saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; animation: spin 1s linear infinite;">refresh</span><span>Saving...</span>';
+        saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">refresh</span><span>Saving...</span>';
         saveDescBtn.disabled = true;
 
         try {
-          const csrfToken = document.cookie.split('; ')
-            .find(r => r.startsWith('csrftoken='))?.split('=')[1] || '';
-
+          const csrfToken = getCsrf();
           const res = await fetch(`/nvr/api/detection/${_currentEventId}/update-description/`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': csrfToken,
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
             credentials: 'same-origin',
             body: JSON.stringify({ description: desc }),
           });
-
           if (res.ok) {
-            saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: var(--success);">check_circle</span><span>Saved!</span>';
+            // Update the dataset on the card so next click reflects the new description
+            const card = document.querySelector(`[data-event-id="${_currentEventId}"]`);
+            if (card) {
+              card.dataset.desc = desc;
+              if (card.getAttribute('data-event')) {
+                try {
+                  const d = JSON.parse(card.getAttribute('data-event') || '{}');
+                  d.description = desc;
+                  card.setAttribute('data-event', JSON.stringify(d));
+                } catch(_) {}
+              }
+            }
+            saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;color:var(--success);">check_circle</span><span>Saved!</span>';
             setTimeout(() => {
-              saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px;">save</span><span>Update Description</span>';
+              saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">save</span><span>Update Description</span>';
               saveDescBtn.disabled = false;
-            }, 2000);
+            }, 2500);
           } else {
-            saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: var(--error);">error</span><span>Error — Retry</span>';
+            saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;color:var(--error);">error</span><span>Error — Retry</span>';
             saveDescBtn.disabled = false;
           }
-        } catch (err) {
-          saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: var(--error);">wifi_off</span><span>Network Error</span>';
+        } catch (_) {
+          saveDescBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;color:var(--error);">wifi_off</span><span>Network Error</span>';
           saveDescBtn.disabled = false;
         }
       });
     }
 
-    // ── Delete Detection via AJAX ──────────────────────────────────────
+    // ── Delete Detection via AJAX ────────────────────────────────────────
     const deleteBtn = document.getElementById('modal-delete-btn');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
         if (!_currentEventId) return;
+        if (!confirm(`Permanently delete Detection Event #${_currentEventId}? This cannot be undone.`)) return;
 
-        if (!confirm(`Are you sure you want to permanently delete Detection Event #${_currentEventId}? This action cannot be undone.`)) return;
-
-        deleteBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; animation: spin 1s linear infinite;">refresh</span><span>Deleting...</span>';
+        deleteBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">refresh</span><span>Deleting...</span>';
         deleteBtn.disabled = true;
 
         try {
-          const csrfToken = document.cookie.split('; ')
-            .find(r => r.startsWith('csrftoken='))?.split('=')[1] || '';
-
+          const csrfToken = getCsrf();
           const res = await fetch(`/nvr/api/detection/${_currentEventId}/delete/`, {
             method: 'POST',
             headers: { 'X-CSRFToken': csrfToken },
             credentials: 'same-origin',
           });
-
           if (res.ok) {
             closeModal();
-            // Remove card from page without full reload
-            const cards = document.querySelectorAll('.nvr-object-card');
-            cards.forEach(card => {
-              if (card.getAttribute('onclick') && card.getAttribute('onclick').includes(`openDetailModal(${_currentEventId},`)) {
-                card.remove();
-              }
+            // Remove card from DOM using data-event-id attribute
+            document.querySelectorAll(`[data-event-id="${_currentEventId}"]`).forEach(el => {
+              el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+              el.style.opacity = '0';
+              el.style.transform = 'scale(0.9)';
+              setTimeout(() => el.remove(), 300);
             });
-            // Also remove from review table rows
-            const rows = document.querySelectorAll(`[data-event-id="${_currentEventId}"]`);
-            rows.forEach(row => row.remove());
           } else {
-            deleteBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: var(--error);">error</span><span>Error</span>';
+            deleteBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;color:var(--error);">error</span><span>Error</span>';
             deleteBtn.disabled = false;
           }
-        } catch (err) {
-          deleteBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; color: var(--error);">wifi_off</span><span>Network Error</span>';
+        } catch (_) {
+          deleteBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;color:var(--error);">wifi_off</span><span>Network Error</span>';
           deleteBtn.disabled = false;
         }
       });

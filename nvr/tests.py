@@ -146,3 +146,87 @@ class NVRAuthorizationAndTabsTests(TestCase):
         self.assertIn("device", data)
         self.assertIn("health", data)
         self.assertEqual(data["health"], "OPTIMAL")
+
+    def test_explore_datetime_and_description_search(self):
+        self.client.login(username="alice", password="password123")
+        event = DetectionEvent.objects.create(
+            user=self.user1,
+            camera=self.camera1,
+            track_id=42,
+            class_name="person",
+            confidence=0.95,
+            bbox_x1=10,
+            bbox_y1=20,
+            bbox_x2=80,
+            bbox_y2=160,
+            description="person in green shirt walking left",
+            snapshot_path="/media/detections/user_alice/obj_42.jpg",
+        )
+
+        # Search by description keyword
+        res = self.client.get(reverse("nvr:explore") + "?q=green+shirt")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "obj_42.jpg")
+
+        # Search by class filter
+        res_class = self.client.get(reverse("nvr:explore") + "?class=person")
+        self.assertEqual(res_class.status_code, 200)
+        self.assertContains(res_class, "obj_42.jpg")
+
+        # Search by non-matching class
+        res_car = self.client.get(reverse("nvr:explore") + "?class=car")
+        self.assertEqual(res_car.status_code, 200)
+        self.assertNotContains(res_car, "obj_42.jpg")
+
+    def test_update_description_and_delete_detection_apis(self):
+        self.client.login(username="alice", password="password123")
+        event = DetectionEvent.objects.create(
+            user=self.user1,
+            camera=self.camera1,
+            track_id=99,
+            class_name="truck",
+            confidence=0.91,
+            bbox_x1=5,
+            bbox_y1=5,
+            bbox_x2=200,
+            bbox_y2=150,
+            snapshot_path="/media/detections/user_alice/obj_99.jpg",
+        )
+
+        # Update description API
+        update_url = reverse("nvr:api_update_description", kwargs={"event_id": event.id})
+        res_update = self.client.post(
+            update_url,
+            data={"description": "Delivery truck with blue container"},
+            content_type="application/json",
+        )
+        self.assertEqual(res_update.status_code, 200)
+        event.refresh_from_db()
+        self.assertEqual(event.description, "Delivery truck with blue container")
+
+        # Delete detection API
+        delete_url = reverse("nvr:api_delete_detection", kwargs={"event_id": event.id})
+        res_delete = self.client.post(delete_url)
+        self.assertEqual(res_delete.status_code, 200)
+        self.assertFalse(DetectionEvent.objects.filter(id=event.id).exists())
+
+    def test_csv_log_export_endpoint(self):
+        self.client.login(username="alice", password="password123")
+        DetectionEvent.objects.create(
+            user=self.user1,
+            camera=self.camera1,
+            track_id=7,
+            class_name="bicycle",
+            confidence=0.87,
+            bbox_x1=10,
+            bbox_y1=20,
+            bbox_x2=50,
+            bbox_y2=60,
+            description="Red road bike",
+        )
+        res = self.client.get(reverse("nvr:export_csv"))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res["Content-Type"], "text/csv")
+        self.assertIn("bicycle", res.content.decode())
+        self.assertIn("Red road bike", res.content.decode())
+

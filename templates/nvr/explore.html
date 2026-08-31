@@ -21,7 +21,7 @@
   </div>
 
   <!-- Advanced Multi-Parameter Search Form -->
-  <form method="get" id="explore-search-form" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; align-items: end;">
+  <form method="get" id="explore-search-form" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: end;">
 
     <!-- Keyword / Description Query -->
     <div style="grid-column: 1 / -1; position: relative;">
@@ -66,26 +66,16 @@
       </select>
     </div>
 
-    <!-- Date Range -->
+    <!-- DateTime From (combined Date + Time in one box) -->
     <div>
-      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Date From</label>
-      <input type="date" name="date_from" value="{{ date_from }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
+      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">From Date &amp; Time</label>
+      <input type="datetime-local" name="datetime_from" value="{{ datetime_from }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
     </div>
 
+    <!-- DateTime To (combined Date + Time in one box) -->
     <div>
-      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Date To</label>
-      <input type="date" name="date_to" value="{{ date_to }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
-    </div>
-
-    <!-- Time Range -->
-    <div>
-      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Time From</label>
-      <input type="time" name="time_from" value="{{ time_from }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
-    </div>
-
-    <div>
-      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Time To</label>
-      <input type="time" name="time_to" value="{{ time_to }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
+      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">To Date &amp; Time</label>
+      <input type="datetime-local" name="datetime_to" value="{{ datetime_to }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
     </div>
 
     <!-- Search Action Buttons -->
@@ -102,8 +92,9 @@
 
   </form>
 
+
   <!-- Active Filter Chips (visual indicators) -->
-  {% if search_query or date_from or date_to or time_from or time_to or selected_class != 'all' or selected_camera != 'all' %}
+  {% if search_query or datetime_from or datetime_to or selected_class != 'all' or selected_camera != 'all' %}
   <div style="display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px;">
     <span style="font-size: 10px; color: var(--outline); padding: 2px 0; align-self: center;">Active filters:</span>
     {% if search_query %}
@@ -116,24 +107,14 @@
         Class: {{ selected_class }}
       </span>
     {% endif %}
-    {% if date_from %}
+    {% if datetime_from %}
       <span style="background: rgba(60,200,255,0.15); color: #3cc8ff; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(60,200,255,0.3);">
-        From: {{ date_from }}
+        From: {{ datetime_from }}
       </span>
     {% endif %}
-    {% if date_to %}
-      <span style="background: rgba(60,200,255,0.15); color: #3cc8ff; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(60,200,255,0.3);">
-        To: {{ date_to }}
-      </span>
-    {% endif %}
-    {% if time_from %}
+    {% if datetime_to %}
       <span style="background: rgba(255,168,86,0.15); color: var(--tertiary); font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(255,168,86,0.3);">
-        After: {{ time_from }}
-      </span>
-    {% endif %}
-    {% if time_to %}
-      <span style="background: rgba(255,168,86,0.15); color: var(--tertiary); font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(255,168,86,0.3);">
-        Before: {{ time_to }}
+        To: {{ datetime_to }}
       </span>
     {% endif %}
   </div>
@@ -160,7 +141,20 @@
       <div class="nvr-horizontal-strip">
         {% for item in cat.items %}
           <div class="nvr-object-card"
-               onclick="openDetailModal({{ item.id }}, '{{ item.class }}', '{{ item.timestamp }}', '{{ item.camera_name }}', '{{ item.confidence_pct }}', '{{ item.track_id }}', '{{ item.snapshot_url }}', '{{ item.description|escapejs }}', {{ item.bbox }}, '{{ item.line_crossing_status }}')"
+               data-event-id="{{ item.id }}"
+               data-class="{{ item.class }}"
+               data-timestamp="{{ item.timestamp }}"
+               data-camera="{{ item.camera_name }}"
+               data-confidence="{{ item.confidence_pct }}"
+               data-track="{{ item.track_id }}"
+               data-snapshot="{{ item.snapshot_url|default:'' }}"
+               data-desc="{{ item.description|default:'' }}"
+               data-bbox-x1="{{ item.bbox.0|default:0 }}"
+               data-bbox-y1="{{ item.bbox.1|default:0 }}"
+               data-bbox-x2="{{ item.bbox.2|default:0 }}"
+               data-bbox-y2="{{ item.bbox.3|default:0 }}"
+               data-line="{{ item.line_crossing_status|default:'none' }}"
+               onclick="openDetailModalFromEl(this)"
                style="cursor: pointer;">
             <div class="nvr-object-card__preview">
               {% if item.snapshot_url %}

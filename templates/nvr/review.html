@@ -55,7 +55,19 @@
       {% for event in events %}
         <div class="nvr-event-card"
              data-event-id="{{ event.id }}"
-             onclick="openDetailModal({{ event.id }}, '{{ event.class }}', '{{ event.timestamp }}', '{{ event.camera_name }}', '{{ event.confidence_pct }}', '{{ event.track_id }}', '{{ event.snapshot_url }}', '{{ event.description|escapejs }}', {{ event.bbox }}, '{{ event.line_crossing_status }}')"
+             data-class="{{ event.class }}"
+             data-timestamp="{{ event.timestamp }}"
+             data-camera="{{ event.camera_name }}"
+             data-confidence="{{ event.confidence_pct }}"
+             data-track="{{ event.track_id }}"
+             data-snapshot="{{ event.snapshot_url|default:'' }}"
+             data-desc="{{ event.description|default:'' }}"
+             data-bbox-x1="{{ event.bbox.0|default:0 }}"
+             data-bbox-y1="{{ event.bbox.1|default:0 }}"
+             data-bbox-x2="{{ event.bbox.2|default:0 }}"
+             data-bbox-y2="{{ event.bbox.3|default:0 }}"
+             data-line="{{ event.line_crossing_status|default:'none' }}"
+             onclick="openDetailModalFromEl(this)"
              style="cursor: pointer;">
           <div class="nvr-event-card__thumbnail">
             {% if event.snapshot_url %}

@@ -324,8 +324,7 @@ class ExploreView(LoginRequiredMixin, TemplateView):
     """
     Explore Tab: Advanced search combining:
     - Object Class / Type (Person, Car, Truck, etc.)
-    - Date Range (date_from, date_to)
-    - Time Range (time_from, time_to)
+    - DateTime range (datetime_from, datetime_to using datetime-local HTML input)
     - Camera Filter
     - Natural-Language Description Keyword / Token Query (Qwen-VL Ready)
     """
@@ -341,10 +340,8 @@ class ExploreView(LoginRequiredMixin, TemplateView):
         query = self.request.GET.get("q", "").strip()
         class_filter = self.request.GET.get("class", "all").strip()
         camera_filter = self.request.GET.get("camera", "all").strip()
-        date_from = self.request.GET.get("date_from", "").strip()
-        date_to = self.request.GET.get("date_to", "").strip()
-        time_from = self.request.GET.get("time_from", "").strip()
-        time_to = self.request.GET.get("time_to", "").strip()
+        datetime_from = self.request.GET.get("datetime_from", "").strip()
+        datetime_to   = self.request.GET.get("datetime_to", "").strip()
 
         qs = DetectionEvent.objects.filter(user=user).select_related("camera")
 
@@ -356,35 +353,21 @@ class ExploreView(LoginRequiredMixin, TemplateView):
         if camera_filter and camera_filter.lower() != "all":
             qs = qs.filter(camera_id=camera_filter)
 
-        # 3. Date Range
-        if date_from:
+        # 3. DateTime Range — browser sends "YYYY-MM-DDTHH:MM" from datetime-local
+        if datetime_from:
             try:
-                df = datetime.strptime(date_from, "%Y-%m-%d").date()
-                qs = qs.filter(created_at__date__gte=df)
+                dt_from = datetime.strptime(datetime_from[:16], "%Y-%m-%dT%H:%M")
+                qs = qs.filter(created_at__gte=dt_from)
             except ValueError:
                 pass
-        if date_to:
+        if datetime_to:
             try:
-                dt = datetime.strptime(date_to, "%Y-%m-%d").date()
-                qs = qs.filter(created_at__date__lte=dt)
-            except ValueError:
-                pass
-
-        # 4. Time Range
-        if time_from:
-            try:
-                tf = datetime.strptime(time_from, "%H:%M").time()
-                qs = qs.filter(created_at__time__gte=tf)
-            except ValueError:
-                pass
-        if time_to:
-            try:
-                tt = datetime.strptime(time_to, "%H:%M").time()
-                qs = qs.filter(created_at__time__lte=tt)
+                dt_to = datetime.strptime(datetime_to[:16], "%Y-%m-%dT%H:%M")
+                qs = qs.filter(created_at__lte=dt_to)
             except ValueError:
                 pass
 
-        # 5. Description & Keyword search (Qwen-VL Ready)
+        # 4. Description & Keyword search (Qwen-VL Ready)
         if query:
             q_filter = (
                 Q(class_name__icontains=query)
@@ -443,7 +426,7 @@ class ExploreView(LoginRequiredMixin, TemplateView):
                 categories[cls]["items"].append(item_data)
 
         # Fallback sample generator if database has no events and no filters applied
-        if total_matched_count == 0 and not query and not date_from and not user.detections.exists():
+        if total_matched_count == 0 and not query and not datetime_from and not user.detections.exists():
             for cls, cat in categories.items():
                 for i in range(3):
                     cat["items"].append({
@@ -467,12 +450,11 @@ class ExploreView(LoginRequiredMixin, TemplateView):
         context["search_query"] = query
         context["selected_class"] = class_filter
         context["selected_camera"] = camera_filter
-        context["date_from"] = date_from
-        context["date_to"] = date_to
-        context["time_from"] = time_from
-        context["time_to"] = time_to
+        context["datetime_from"] = datetime_from
+        context["datetime_to"] = datetime_to
         context["active_tab"] = "explore"
         return context
+
 
 
 # ── 6. Export Tab (Clip Trimming & Custom Video Upload Processing) ─────────────
@@ -493,22 +475,27 @@ class ExportView(LoginRequiredMixin, TemplateView):
         context["cameras"] = Camera.objects.filter(owner=user)
 
         base_dir = getattr(settings, "BASE_DIR", Path(__file__).resolve().parent.parent)
-        export_dir = base_dir / "output" / "video"
+        export_dirs = [base_dir / "media" / "exports", base_dir / "output" / "video"]
         export_history = []
+        seen_filenames = set()
 
-        if export_dir.exists():
-            for f in sorted(export_dir.glob("*.mp4"), key=os.path.getmtime, reverse=True):
-                size_mb = f.stat().st_size / (1024 * 1024)
-                export_history.append({
-                    "name": f.name,
-                    "url": f"/media/exports/{f.name}" if (base_dir / "media" / "exports" / f.name).exists() else f"/output/video/{f.name}",
-                    "filepath": str(f),
-                    "camera": "Uploaded Video / Primary" if "upload" in f.name else "Primary Sensor",
-                    "format": "MP4 Video (H.264 Annotated)",
-                    "size": f"{size_mb:.2f} MB" if size_mb > 0 else "3.8 MB",
-                    "created_at": datetime.fromtimestamp(f.stat().st_mtime).strftime("%b %d, %Y %H:%M"),
-                    "status": "Ready",
-                })
+        for exp_dir in export_dirs:
+            if exp_dir.exists():
+                for f in sorted(exp_dir.glob("*.mp4"), key=os.path.getmtime, reverse=True):
+                    if f.name in seen_filenames:
+                        continue
+                    seen_filenames.add(f.name)
+                    size_mb = f.stat().st_size / (1024 * 1024)
+                    export_history.append({
+                        "name": f.name,
+                        "url": f"/media/exports/{f.name}" if (base_dir / "media" / "exports" / f.name).exists() else f"/media/exports/{f.name}",
+                        "filepath": str(f),
+                        "camera": "Uploaded Video / Custom" if "upload" in f.name else "Primary Sensor",
+                        "format": "MP4 Video (H.264 Annotated)",
+                        "size": f"{size_mb:.2f} MB" if size_mb > 0 else "3.8 MB",
+                        "created_at": datetime.fromtimestamp(f.stat().st_mtime).strftime("%b %d, %Y %H:%M"),
+                        "status": "Ready",
+                    })
 
         if not export_history:
             export_history = [
@@ -529,6 +516,7 @@ class ExportView(LoginRequiredMixin, TemplateView):
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         camera_choice = request.POST.get("camera", "")
         export_type = request.POST.get("export_type", "video")
+        processing_mode = request.POST.get("processing_mode", "video_only")
         base_dir = getattr(settings, "BASE_DIR", Path(__file__).resolve().parent.parent)
 
         # ── Handle Custom Video Upload Inference Pipeline ────────────────────
@@ -553,11 +541,11 @@ class ExportView(LoginRequiredMixin, TemplateView):
                     source_url=str(upload_path),
                 )
 
-            # Output video path
-            video_out_dir = base_dir / "output" / "video"
-            video_out_dir.mkdir(parents=True, exist_ok=True)
+            # Output video paths (in media/exports for direct HTTP download)
+            media_exports_dir = base_dir / "media" / "exports"
+            media_exports_dir.mkdir(parents=True, exist_ok=True)
             output_filename = f"annotated_upload_{ts}.mp4"
-            output_filepath = video_out_dir / output_filename
+            output_filepath = media_exports_dir / output_filename
 
             # Run YOLO + ByteTrack on uploaded video
             cap = cv2.VideoCapture(str(upload_path))
@@ -580,7 +568,8 @@ class ExportView(LoginRequiredMixin, TemplateView):
             tracker = Tracker(model_path=model_path, conf_threshold=0.35, device=device)
 
             media_snap_dir = base_dir / "media" / "detections" / f"user_{request.user.pk}" / f"camera_{cam.pk}"
-            media_snap_dir.mkdir(parents=True, exist_ok=True)
+            if processing_mode == "video_and_logs":
+                media_snap_dir.mkdir(parents=True, exist_ok=True)
 
             saved_tids: set[int] = set()
             detected_count = 0
@@ -605,28 +594,41 @@ class ExportView(LoginRequiredMixin, TemplateView):
 
                         draw_box(frame, bbox, tid, cls_name, conf)
 
-                        # Save single snapshot per detected object into database
-                        if tid > 0 and tid not in saved_tids:
-                            saved_tids.add(tid)
-                            detected_count += 1
-                            snap_name = f"obj_{tid}_{cls_name}_{ts}_{frame_idx}.jpg"
-                            snap_path = media_snap_dir / snap_name
-                            cv2.imwrite(str(snap_path), clean_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                        # Only persist snapshots and logs if "video_and_logs" mode is selected
+                        if processing_mode == "video_and_logs":
+                            if tid > 0 and tid not in saved_tids:
+                                saved_tids.add(tid)
+                                detected_count += 1
+                                snap_name = f"obj_{tid}_{cls_name}_{ts}_{frame_idx}.jpg"
+                                snap_path = media_snap_dir / snap_name
 
-                            DetectionEvent.objects.create(
-                                user=request.user,
-                                camera=cam,
-                                track_id=tid,
-                                class_name=cls_name,
-                                confidence=round(conf, 4),
-                                bbox_x1=bbox[0],
-                                bbox_y1=bbox[1],
-                                bbox_x2=bbox[2],
-                                bbox_y2=bbox[3],
-                                frame_number=frame_idx,
-                                snapshot_path=f"/media/detections/user_{request.user.pk}/camera_{cam.pk}/{snap_name}",
-                                description=f"Object detected in uploaded video {video_file.name}",
-                            )
+                                # Crop snapshot to bounding box (with padding)
+                                h_f, w_f = clean_frame.shape[:2]
+                                pad = 10
+                                x1c = max(0, int(bbox[0]) - pad)
+                                y1c = max(0, int(bbox[1]) - pad)
+                                x2c = min(w_f, int(bbox[2]) + pad)
+                                y2c = min(h_f, int(bbox[3]) + pad)
+                                cropped = clean_frame[y1c:y2c, x1c:x2c]
+                                if cropped.size > 0:
+                                    cv2.imwrite(str(snap_path), cropped, [cv2.IMWRITE_JPEG_QUALITY, 88])
+                                else:
+                                    cv2.imwrite(str(snap_path), clean_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+
+                                DetectionEvent.objects.create(
+                                    user=request.user,
+                                    camera=cam,
+                                    track_id=tid,
+                                    class_name=cls_name,
+                                    confidence=round(conf, 4),
+                                    bbox_x1=bbox[0],
+                                    bbox_y1=bbox[1],
+                                    bbox_x2=bbox[2],
+                                    bbox_y2=bbox[3],
+                                    frame_number=frame_idx,
+                                    snapshot_path=f"/media/detections/user_{request.user.pk}/camera_{cam.pk}/{snap_name}",
+                                    description=f"Object detected in uploaded video {video_file.name}",
+                                )
 
                     draw_fps(frame, fps)
                     out_writer.write(frame)
@@ -635,10 +637,16 @@ class ExportView(LoginRequiredMixin, TemplateView):
                 cap.release()
                 out_writer.release()
 
-            messages.success(
-                request,
-                f"Uploaded video '{video_file.name}' processed successfully! {detected_count} object(s) detected and saved to Explore & Review. Annotated MP4 '{output_filename}' is ready for download.",
-            )
+            if processing_mode == "video_and_logs":
+                messages.success(
+                    request,
+                    f"Uploaded video '{video_file.name}' processed successfully! {detected_count} object(s) detected and saved to Explore & Review logs. Annotated MP4 '{output_filename}' is ready in Export History below.",
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Uploaded video '{video_file.name}' processed! Annotated MP4 '{output_filename}' generated (video-only mode, no logs stored). Ready to download in Export History below.",
+                )
             return redirect("nvr:export")
 
         messages.success(request, f"Export request queued successfully! Preparing {export_type.upper()} extraction.")
