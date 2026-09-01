@@ -41,15 +41,15 @@
         <a href="{% url 'core:home' %}"
           class="nav__link {% if request.resolver_match.url_name == 'home' %}nav__link--active{% endif %}"
           role="listitem">Home</a>
-        <a href="{% url 'core:home' %}#services" class="nav__link" role="listitem">Services</a>
-        <!-- <a href="{% url 'core:book_demo' %}"
-          class="nav__link {% if request.resolver_match.url_name == 'book_demo' %}nav__link--active{% endif %}"
-          role="listitem">Book a Demo</a> -->
+
         <a href="{% url 'docs:list' %}"
           class="nav__link {% if request.resolver_match.app_name == 'docs' %}nav__link--active{% endif %}"
           role="listitem">Docs</a>
         <a href="https://github.com/msVivekRanjan/SemanticEdgev2" target="_blank" class="nav__link"
           role="listitem">GitHub</a>
+        <a href="{% url 'core:book_demo' %}"
+          class="nav__link {% if request.resolver_match.url_name == 'book_demo' %}nav__link--active{% endif %}"
+          role="listitem">Contact</a>
         {% if user.is_authenticated %}
         <a href="{% url 'nvr:live' %}"
           class="nav__link {% if request.resolver_match.app_name == 'nvr' %}nav__link--active{% endif %}"
@@ -92,9 +92,9 @@
     <!-- Mobile menu -->
     <div class="nav__mobile-menu" id="nav-mobile-menu" role="navigation" aria-label="Mobile navigation">
       <a href="{% url 'core:home' %}" class="nav__link">Home</a>
-      <a href="{% url 'core:home' %}#services" class="nav__link">Services</a>
-      <a href="{% url 'core:book_demo' %}" class="nav__link">Book a Demo</a>
+
       <a href="{% url 'docs:list' %}" class="nav__link">Documentation</a>
+      <a href="{% url 'core:book_demo' %}" class="nav__link">Contact</a>
       {% if user.is_authenticated %}
       <a href="{% url 'nvr:live' %}" class="nav__link">NVR Console</a>
       <form method="post" action="{% url 'accounts:logout' %}">
@@ -199,13 +199,15 @@
     <!-- Bottom Bar: Copyright & Attribution -->
     <div class="footer__bottom-bar">
       <div>
-        © {% now "Y" %} SemanticEdge Technologies. Built with Django, YOLOv8 &amp; ByteTrack.
+        © {% now "Y" %} SemanticEdge Technologies. All Rights Reserved.
       </div>
       <div class="footer__bottom-links">
         <a href="{% url 'docs:list' %}" class="footer__link" style="font-size: 12px;">Docs</a>
-        <a href="{% url 'core:book_demo' %}" class="footer__link" style="font-size: 12px;">Contact Solutions</a>
+        <a href="{% url 'core:book_demo' %}" class="footer__link" style="font-size: 12px;">Contact</a>
         <a href="https://github.com/msVivekRanjan/SemanticEdgev2" target="_blank" rel="noopener" class="footer__link"
           style="font-size: 12px;">GitHub</a>
+        <a href="https://www.vivekrs.in/" target="_blank" rel="noopener" class="footer__link"
+          style="font-size: 12px;">Developer</a>
         <a href="#" class="footer__link" style="font-size: 12px;"
           onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;">Top ↑</a>
       </div>
