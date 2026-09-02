@@ -11,7 +11,7 @@
     <!-- Brand Header -->
     <div style="margin-bottom: var(--space-xl); text-align: center;">
       <div style="display: flex; justify-content: center; margin-bottom: 12px;">
-        <img src="{% static 'img/logo.png' %}" alt="SemanticEdge Logo" style="width: 52px; height: 52px; object-fit: contain;" />
+        <img src="{% static 'img/logo.svg' %}" alt="SemanticEdge Logo" style="width: 48px; height: 48px;" />
       </div>
       <h1 class="auth-card__logo" style="margin-bottom: 4px;">SemanticEdge</h1>
       <p class="auth-card__subtitle">Sign in to access your NVR monitoring console</p>
@@ -33,7 +33,7 @@
       <div class="auth-card__field">
         <label class="input-label" for="{{ form.username.id_for_label }}">Username</label>
         <input type="text" id="{{ form.username.id_for_label }}" name="{{ form.username.html_name }}" class="input"
-          placeholder="admin or demo" autocomplete="username" autofocus value="{{ form.username.value|default:'' }}"
+          placeholder="ms.vivekranjan" autocomplete="username" autofocus value="{{ form.username.value|default:'' }}"
           required />
         {% if form.username.errors %}
         <p style="color: var(--error); font-size: 12px; margin-top: 4px;">{{ form.username.errors.0 }}</p>
@@ -71,17 +71,6 @@
       </a>
     </div>
 
-    <!-- Quick Credentials Helper for Demo -->
-    <!-- <div
-      style="margin-top: var(--space-lg); padding: 12px 14px; background-color: var(--surface-container-lowest); border: 1px solid var(--border-subtle); border-radius: var(--radius); font-size: 12px;">
-      <div style="font-weight: 600; color: var(--primary); margin-bottom: 4px; font-family: var(--font-mono);">
-        DEMO CREDENTIALS
-      </div>
-      <div style="color: var(--on-surface-variant); font-family: var(--font-mono);">
-        Admin: <code>admin</code> / <code>admin123</code><br>
-        Standard: <code>demo</code> / <code>demo123</code>
-      </div>
-    </div> -->
 
     <!-- Footer Links -->
     <div

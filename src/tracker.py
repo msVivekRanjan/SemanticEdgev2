@@ -84,7 +84,8 @@ class Tracker:
             conf=self.conf_threshold,
             device=self.device,
             persist=self.persist,
-            tracker="bytetrack.yaml",   # use built-in ByteTrack config
+            tracker="bytetrack.yaml",
+            imgsz=640,
             verbose=False,
         )[0]
 

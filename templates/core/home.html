@@ -36,9 +36,10 @@
         color: var(--on-surface-variant);
         margin-bottom: var(--space-xl);
       ">
-        SemanticEdge delivers enterprise-grade NVR infrastructure powered by on-premise AI vision.
-        We provide specialized computer vision services designed for Traffic Authorities,
-        Colleges & Educational Institutions, and Industrial Manufacturing Plants — with zero cloud leakage.
+        SemanticEdge is an open-source NVR built around real-time AI object detection.
+        All processing is performed locally on your own hardware — your camera feeds
+        never leave your network. YOLOv8 inference, ByteTrack multi-object tracking,
+        and structured event logging, all in a single deployable system.
       </p>
 
       <!-- Prominent Buttons with Arrow Icons -->
@@ -47,10 +48,9 @@
           <span>Deploy Console</span>
           <span class="material-symbols-outlined">arrow_forward</span>
         </a>
-        <a href="{% url 'core:book_demo' %}" class="btn btn--hero"
-          style="background: rgba(109, 94, 245, 0.15); border: 1px solid var(--primary); color: #fff;">
-          <span>Book a Demo</span>
-          <span class="material-symbols-outlined">calendar_today</span>
+        <a href="{% url 'docs:list' %}" class="btn btn--ghost btn--hero">
+          <span>Read Documentation</span>
+          <span class="material-symbols-outlined">menu_book</span>
         </a>
       </div>
     </div>
@@ -354,34 +354,881 @@
   </div>
 </section>
 
-<!-- ── CTA Section with Action Buttons ──────────────────────────────────── -->
-<section class="section reveal" style="margin-bottom: var(--space-5xl);">
-  <div style="text-align: center; max-width: 700px; margin: 0 auto;">
-    <h2 style="
-      font-size: clamp(48px, 7vw, 84px);
-      font-weight: 900;
-      line-height: 0.92;
-      letter-spacing: -0.04em;
-      color: var(--on-surface);
-      margin-bottom: var(--space-2xl);
-    ">Ready to transform your vision ops?</h2>
-    <p
-      style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); margin-bottom: var(--space-3xl); max-width: 44ch; margin-left: auto; margin-right: auto;">
-      Connect your local cameras, deploy tailored intelligence services, and monitor securely on hardware you own.
-    </p>
+<!-- ── Product Overview Tabs ────────────────────────────────────────────── -->
+<section class="section reveal" style="padding-top: var(--space-4xl); border-top: 1px solid rgba(255,255,255,0.06);">
 
-    <!-- Prominent Buttons with Forward Arrows -->
-    <div style="display: flex; flex-wrap: wrap; gap: var(--space-md); justify-content: center; align-items: center;">
-      <a href="{% url 'accounts:login' %}" class="btn btn--primary btn--hero">
-        <span>Start Monitoring</span>
-        <span class="material-symbols-outlined">arrow_forward</span>
-      </a>
-      <a href="{% url 'core:book_demo' %}" class="btn btn--ghost btn--hero">
-        <span>Schedule a Demo</span>
-        <span class="material-symbols-outlined">calendar_today</span>
-      </a>
+  <div style="text-align: center; max-width: 700px; margin: 0 auto var(--space-2xl) auto;">
+    <p class="eyebrow" style="margin-bottom: var(--space-sm);">PRODUCT OVERVIEW</p>
+    <h2
+      style="font-size: clamp(30px, 4.5vw, 52px); font-weight: 900; letter-spacing: -0.03em; color: var(--on-surface); line-height: 1.1;">
+      AI Edge <span class="gradient-text">NVR</span>
+    </h2>
+  </div>
+
+  <div id="se-tabs"
+    style="max-width: 1140px; margin: 0 auto; border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-lg); overflow: hidden; background: var(--surface-container-lowest);">
+
+    <!-- Tab bar -->
+    <div id="se-tabbar" style="display: flex; border-bottom: 1px solid rgba(255,255,255,0.08); overflow-x: auto;">
+      <button class="se-tab is-active" data-index="0" style="flex: 1; min-width: 120px;">
+        <span class="material-symbols-outlined se-tab-icon">home</span>
+        <span class="se-tab-num">01</span>
+        <span class="se-tab-label">Introduction</span>
+      </button>
+      <button class="se-tab" data-index="1" style="flex: 1; min-width: 120px;">
+        <span class="material-symbols-outlined se-tab-icon">bar_chart</span>
+        <span class="se-tab-num">02</span>
+        <span class="se-tab-label">Pipeline</span>
+      </button>
+      <button class="se-tab" data-index="2" style="flex: 1; min-width: 120px;">
+        <span class="material-symbols-outlined se-tab-icon">settings</span>
+        <span class="se-tab-num">03</span>
+        <span class="se-tab-label">Tech Specs</span>
+      </button>
+      <button class="se-tab" data-index="3" style="flex: 1; min-width: 120px;">
+        <span class="material-symbols-outlined se-tab-icon">link</span>
+        <span class="se-tab-num">04</span>
+        <span class="se-tab-label">Integration</span>
+      </button>
+      <button class="se-tab" data-index="4" style="flex: 1; min-width: 120px;">
+        <span class="material-symbols-outlined se-tab-icon">compare_arrows</span>
+        <span class="se-tab-num">05</span>
+        <span class="se-tab-label">Comparison</span>
+      </button>
     </div>
+
+    <!-- Panels -->
+    <div style="padding: var(--space-xl);">
+
+      <!-- Panel 1: Introduction -->
+      <div class="se-panel is-active" data-panel="0"
+        style="display: grid; grid-template-columns: 1.1fr 1fr; gap: var(--space-2xl); align-items: start;">
+        <div>
+          <span class="badge se-badge">INTRODUCTION</span>
+          <h3 class="se-h3">What is SemanticEdge?</h3>
+          <p class="se-p">
+            An edge inference node that connects to your existing cameras and DVR/NVR hub, processing every frame
+            locally — extracting structured, searchable meaning instead of just recording footage.
+          </p>
+          <p class="se-p">
+            Operators get objects, identities, and plain-English descriptions instead of hours of raw footage to
+            scrub through.
+          </p>
+          <div class="se-list">
+            <div class="se-list-item"><span class="se-dot"></span>Real-time local video ingestion</div>
+            <div class="se-list-item"><span class="se-dot"></span>Object detection & persistent tracking</div>
+            <div class="se-list-item"><span class="se-dot"></span>Conditional AI description generation</div>
+            <div class="se-list-item"><span class="se-dot"></span>Encrypted metadata sync to the cloud</div>
+          </div>
+        </div>
+        <div class="se-device">
+          <p class="se-device-eyebrow">EDGE AI DEVICE</p>
+          <h4 class="se-device-title">SemanticEdge Inference Node</h4>
+          <p class="se-device-sub">Local Vision Intelligence Server</p>
+          <div class="se-device-grid">
+            <div class="se-device-stat">
+              <p class="se-stat-label">INPUT</p>
+              <p class="se-stat-val">DVR/NVR · ONVIF Cameras</p>
+            </div>
+            <div class="se-device-stat">
+              <p class="se-stat-label">PROCESSING</p>
+              <p class="se-stat-val">YOLOv8 + ByteTrack</p>
+            </div>
+            <div class="se-device-stat">
+              <p class="se-stat-label">STORAGE</p>
+              <p class="se-stat-val">On-prem buffer, 24–72h</p>
+            </div>
+            <div class="se-device-stat">
+              <p class="se-stat-label">OUTPUT</p>
+              <p class="se-stat-val">Structured metadata</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Pipeline -->
+      <div class="se-panel" data-panel="1"
+        style="display: none; grid-template-columns: 1.1fr 1fr; gap: var(--space-2xl); align-items: start;">
+        <div>
+          <span class="badge se-badge">PIPELINE</span>
+          <h3 class="se-h3">Detection, tracking, description</h3>
+          <p class="se-p">
+            Every frame passes through a purpose-built pipeline, each stage handing a lighter payload to the next
+            so the node stays fast even on modest hardware.
+          </p>
+          <div class="se-list">
+            <div class="se-list-item"><span class="se-dot"></span>Detection — multi-class objects, every frame</div>
+            <div class="se-list-item"><span class="se-dot"></span>Tracking — persistent IDs across occlusion</div>
+            <div class="se-list-item"><span class="se-dot"></span>Description — triggered only on meaningful change
+            </div>
+            <div class="se-list-item"><span class="se-dot"></span>Query — hybrid structured + semantic search</div>
+          </div>
+        </div>
+        <div class="se-device">
+          <p class="se-device-eyebrow">INFERENCE PIPELINE</p>
+          <h4 class="se-device-title">Three-Stage Processing</h4>
+          <p class="se-device-sub">Per-camera, per-frame</p>
+          <div class="se-device-grid">
+            <div class="se-device-stat">
+              <p class="se-stat-label">STAGE 1</p>
+              <p class="se-stat-val">Detection · YOLOv8</p>
+            </div>
+            <div class="se-device-stat">
+              <p class="se-stat-label">STAGE 2</p>
+              <p class="se-stat-val">Tracking · ByteTrack</p>
+            </div>
+            <div class="se-device-stat">
+              <p class="se-stat-label">STAGE 3</p>
+              <p class="se-stat-val">Description · Conditional VLM</p>
+            </div>
+            <div class="se-device-stat">
+              <p class="se-stat-label">STAGE 4</p>
+              <p class="se-stat-val">Search · Vector + structured</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 3: Tech Specs -->
+      <div class="se-panel" data-panel="2"
+        style="display: none; grid-template-columns: 1fr 1.1fr; gap: var(--space-2xl); align-items: start;">
+        <div>
+          <span class="badge se-badge">TECHNICAL SPECS</span>
+          <h3 class="se-h3">Built for Continuous Operation</h3>
+          <p class="se-p">
+            Engineered to integrate with your existing camera infrastructure with zero disruption to day-to-day
+            operations.
+          </p>
+          <div class="se-list">
+            <div class="se-list-item"><span class="se-check">✓</span>Works with existing IP cameras — no hardware
+              replacement needed</div>
+            <div class="se-list-item"><span class="se-check">✓</span>All AI processing runs on-device, keeping data
+              on-premise</div>
+            <div class="se-list-item"><span class="se-check">✓</span>Supports ONVIF and RTSP — industry-standard
+              protocols</div>
+            <div class="se-list-item"><span class="se-check">✓</span>Scales from a single node to a multi-site camera
+              network</div>
+          </div>
+        </div>
+        <div>
+          <table class="se-spec-table">
+            <thead>
+              <tr>
+                <th>FEATURE</th>
+                <th>SPECIFICATION</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Camera Channels</td>
+                <td>📷 Up to 16 cameras / node</td>
+              </tr>
+              <tr>
+                <td>AI Pipeline</td>
+                <td><span class="se-pill">Detection · Tracking · Description</span></td>
+              </tr>
+              <tr>
+                <td>Protocol Support</td>
+                <td>🔗 ONVIF / RTSP</td>
+              </tr>
+              <tr>
+                <td>Metadata Transport</td>
+                <td>📡 MQTT over TLS 1.3</td>
+              </tr>
+              <tr>
+                <td>Storage</td>
+                <td>💾 Local HDD / SSD, circular buffer</td>
+              </tr>
+              <tr>
+                <td>Processing</td>
+                <td><span class="se-pill">Edge AI Node · 15–20W</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Panel 4: Integration -->
+      <div class="se-panel" data-panel="3"
+        style="display: none; grid-template-columns: 1fr 1.1fr; gap: var(--space-2xl); align-items: start;">
+        <div>
+          <span class="badge se-badge">INTEGRATION</span>
+          <h3 class="se-h3">Works With Your Existing Infrastructure</h3>
+          <p class="se-p">
+            Designed to plug into what you already have — no ripping out cameras, no costly replacements.
+          </p>
+          <p style="font-size: 14px; font-weight: 700; color: var(--on-surface); margin-bottom: var(--space-md);">No
+            camera replacement required.</p>
+          <div class="se-icon-grid">
+            <div class="se-icon-card"><span class="material-symbols-outlined">videocam</span>IP Cameras</div>
+            <div class="se-icon-card"><span class="material-symbols-outlined">dvr</span>DVR / NVR Systems</div>
+            <div class="se-icon-card"><span class="material-symbols-outlined">query_stats</span>Metadata Sync</div>
+            <div class="se-icon-card"><span class="material-symbols-outlined">dashboard</span>Cloud Dashboards</div>
+          </div>
+        </div>
+        <div class="se-device" style="padding: 0; overflow: hidden;">
+          <div
+            style="background: #0a0a0f; padding: var(--space-lg); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08);">
+            <div style="text-align: left;">
+              <p class="se-device-eyebrow" style="margin-bottom: 4px;">CENTRAL HUB</p>
+              <h4 class="se-device-title" style="margin-bottom: 2px;">SemanticEdge Node</h4>
+              <p class="se-device-sub" style="border: none; padding: 0; margin: 0;">Video Intelligence Server</p>
+            </div>
+            <span class="se-live-badge"><span class="se-live-dot"></span>LIVE</span>
+          </div>
+          <div style="padding: var(--space-lg);">
+            <div class="se-protocol-grid">
+              <div class="se-protocol-card">
+                <p class="se-stat-label">INPUT PROTOCOL</p>
+                <p class="se-stat-val">🔗 ONVIF</p>
+              </div>
+              <div class="se-protocol-card">
+                <p class="se-stat-label">INPUT PROTOCOL</p>
+                <p class="se-stat-val">🔗 RTSP</p>
+              </div>
+              <div class="se-protocol-card">
+                <p class="se-stat-label">TRANSPORT</p>
+                <p class="se-stat-val">📡 MQTT / TLS</p>
+              </div>
+              <div class="se-protocol-card">
+                <p class="se-stat-label">CLOUD</p>
+                <p class="se-stat-val">☁ Dashboard API</p>
+              </div>
+            </div>
+            <div class="se-success-banner">✓ No hardware replacement required</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 5: Comparison -->
+      <div class="se-panel" data-panel="4"
+        style="display: none; grid-template-columns: 1fr 1.2fr; gap: var(--space-2xl); align-items: start;">
+        <div>
+          <span class="badge se-badge">COMPARISON</span>
+          <h3 class="se-h3">Traditional NVR vs. SemanticEdge</h3>
+          <p class="se-p">
+            See exactly what changes when you add semantic AI to your existing camera setup.
+          </p>
+        </div>
+        <div>
+          <table class="se-compare-table">
+            <thead>
+              <tr>
+                <th>CAPABILITY</th>
+                <th>Traditional NVR</th>
+                <th class="se-best-col">SemanticEdge <span class="se-best-badge">✦ BEST</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Recording</td>
+                <td class="se-no">✕ Video only</td>
+                <td class="se-yes">✓ Recording + AI metadata</td>
+              </tr>
+              <tr>
+                <td>Monitoring</td>
+                <td class="se-no">✕ Manual review</td>
+                <td class="se-yes">✓ Automated alerts</td>
+              </tr>
+              <tr>
+                <td>Search</td>
+                <td class="se-no">✕ Timestamp only</td>
+                <td class="se-yes">✓ Plain-English search</td>
+              </tr>
+              <tr>
+                <td>Privacy</td>
+                <td class="se-no">✕ Raw video may leave site</td>
+                <td class="se-yes">✓ Metadata-only cloud sync</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="se-cta-banner">
+            <span>Turns raw footage into <strong>4× faster</strong> investigations.</span>
+            <a href="{% url 'core:book_demo' %}">Request a Demo →</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer nav -->
+    <div
+      style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-md) var(--space-xl); border-top: 1px solid rgba(255,255,255,0.08);">
+      <div id="se-dots" style="display: flex; gap: 8px;">
+        <span class="se-dot-nav is-active" data-index="0"></span>
+        <span class="se-dot-nav" data-index="1"></span>
+        <span class="se-dot-nav" data-index="2"></span>
+        <span class="se-dot-nav" data-index="3"></span>
+        <span class="se-dot-nav" data-index="4"></span>
+      </div>
+      <p style="font-size: 13px; color: var(--on-surface-variant); margin: 0;">
+        Slide <span id="se-slide-current" style="color: var(--on-surface); font-weight: 700;">1</span> of 5
+      </p>
+      <div style="display: flex; gap: 8px;">
+        <button id="se-prev" class="se-nav-btn" aria-label="Previous">
+          <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span>
+        </button>
+        <button id="se-next" class="se-nav-btn" aria-label="Next">
+          <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+
   </div>
 </section>
+
+<style>
+  .se-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    transition: background 0.15s ease;
+  }
+
+  .se-tab:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .se-tab-icon {
+    color: var(--on-surface-variant);
+    font-size: 20px;
+  }
+
+  .se-tab-num {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 10px;
+    color: var(--on-surface-variant);
+    opacity: 0.6;
+  }
+
+  .se-tab-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--on-surface-variant);
+  }
+
+  .se-tab.is-active {
+    border-bottom-color: var(--primary);
+  }
+
+  .se-tab.is-active .se-tab-icon,
+  .se-tab.is-active .se-tab-label {
+    color: var(--primary);
+  }
+
+  .se-badge {
+    display: inline-block;
+    background: rgba(109, 94, 245, 0.15);
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-bottom: var(--space-sm);
+  }
+
+  .se-h3 {
+    font-size: clamp(20px, 2.6vw, 28px);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--on-surface);
+    margin-bottom: var(--space-sm);
+    line-height: 1.15;
+  }
+
+  .se-p {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--on-surface-variant);
+    line-height: 1.7;
+    margin-bottom: var(--space-sm);
+  }
+
+  .se-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: var(--space-md);
+  }
+
+  .se-list-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13px;
+    color: var(--on-surface);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+
+  .se-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    flex-shrink: 0;
+  }
+
+  .se-check {
+    color: var(--success);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .se-device {
+    background: #0a0a0f;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    text-align: center;
+  }
+
+  .se-device-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--on-surface-variant);
+    margin-bottom: 4px;
+  }
+
+  .se-device-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--on-surface);
+    margin-bottom: 2px;
+  }
+
+  .se-device-sub {
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .se-device-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    text-align: left;
+  }
+
+  .se-device-stat {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+
+  .se-stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--primary);
+    margin-bottom: 3px;
+  }
+
+  .se-stat-val {
+    font-size: 12px;
+    color: var(--on-surface);
+    font-weight: 600;
+  }
+
+  /* Tech spec table */
+  .se-spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .se-spec-table thead tr {
+    background: #0a0a0f;
+  }
+
+  .se-spec-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--on-surface-variant);
+  }
+
+  .se-spec-table td {
+    padding: 11px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--on-surface);
+  }
+
+  .se-spec-table td:first-child {
+    color: var(--on-surface-variant);
+    font-weight: 500;
+    width: 42%;
+  }
+
+  .se-pill {
+    background: rgba(109, 94, 245, 0.15);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    display: inline-block;
+  }
+
+  /* Integration icon grid */
+  .se-icon-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: var(--space-md);
+  }
+
+  .se-icon-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--on-surface);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+
+  .se-icon-card .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--primary);
+  }
+
+  .se-live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--success);
+    background: rgba(76, 217, 100, 0.12);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .se-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+
+  .se-protocol-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    text-align: left;
+    margin-bottom: var(--space-md);
+  }
+
+  .se-protocol-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+
+  .se-success-banner {
+    background: rgba(76, 217, 100, 0.12);
+    color: var(--success);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    padding: 10px;
+    border-radius: var(--radius);
+  }
+
+  /* Comparison table */
+  .se-compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .se-compare-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--on-surface);
+    background: #0a0a0f;
+  }
+
+  .se-compare-table td {
+    padding: 11px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .se-compare-table td:first-child {
+    color: var(--on-surface-variant);
+    font-weight: 600;
+  }
+
+  .se-best-col {
+    background: var(--primary);
+    color: #fff !important;
+    position: relative;
+  }
+
+  .se-compare-table tbody .se-yes {
+    background: rgba(109, 94, 245, 0.08);
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .se-compare-table tbody .se-no {
+    color: var(--on-surface-variant);
+  }
+
+  .se-best-badge {
+    background: rgba(255, 255, 255, 0.2);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 20px;
+    margin-left: 6px;
+  }
+
+  .se-cta-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: rgba(109, 94, 245, 0.1);
+    border: 1px solid rgba(109, 94, 245, 0.25);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-top: var(--space-md);
+    font-size: 13px;
+    color: var(--on-surface);
+  }
+
+  .se-cta-banner strong {
+    color: var(--primary);
+  }
+
+  .se-cta-banner a {
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .se-cta-banner a:hover {
+    text-decoration: underline;
+  }
+
+  .se-dot-nav {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    transition: background 0.15s ease, width 0.15s ease;
+  }
+
+  .se-dot-nav.is-active {
+    background: var(--primary);
+    width: 18px;
+    border-radius: 4px;
+  }
+
+  .se-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    color: var(--on-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .se-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  @media (max-width: 768px) {
+    .se-panel.is-active {
+      display: flex !important;
+      flex-direction: column;
+    }
+
+    .se-tab-label {
+      display: none;
+    }
+
+    .se-device-grid,
+    .se-protocol-grid,
+    .se-icon-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  (function () {
+    var total = 5;
+    var current = 0;
+    var tabs = document.querySelectorAll('#se-tabbar .se-tab');
+    var panels = document.querySelectorAll('.se-panel');
+    var dots = document.querySelectorAll('.se-dot-nav');
+    var counter = document.getElementById('se-slide-current');
+
+    function goTo(index) {
+      current = index;
+      tabs.forEach(function (t) { t.classList.toggle('is-active', +t.dataset.index === index); });
+      panels.forEach(function (p) {
+        var active = +p.dataset.panel === index;
+        p.classList.toggle('is-active', active);
+        p.style.display = active ? 'grid' : 'none';
+      });
+      dots.forEach(function (d) { d.classList.toggle('is-active', +d.dataset.index === index); });
+      counter.textContent = index + 1;
+    }
+
+    tabs.forEach(function (t) { t.addEventListener('click', function () { goTo(+t.dataset.index); }); });
+    dots.forEach(function (d) { d.addEventListener('click', function () { goTo(+d.dataset.index); }); });
+
+    document.getElementById('se-prev').addEventListener('click', function () {
+      goTo((current - 1 + total) % total);
+    });
+    document.getElementById('se-next').addEventListener('click', function () {
+      goTo((current + 1) % total);
+    });
+  })();
+</script>
+
+<!-- ── CTA Section ──────────────────────────────────────────────────────── -->
+<section class="section reveal"
+  style="margin-bottom: var(--space-5xl); border-top: 1px solid rgba(255,255,255,0.06); padding-top: var(--space-4xl);">
+  <div style="text-align: center; max-width: 800px; margin: 0 auto;">
+
+    <!-- Eyebrow pill -->
+    <span class="badge" style="
+      display: inline-block;
+      background: rgba(109,94,245,0.15);
+      border: 1px solid rgba(109,94,245,0.35);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 7px 18px;
+      border-radius: 20px;
+      margin-bottom: var(--space-xl);
+    ">GET STARTED</span>
+
+    <h2 style="
+      font-size: clamp(38px, 6vw, 68px);
+      font-weight: 900;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: var(--on-surface);
+      margin-bottom: var(--space-xl);
+    ">
+      Unlock the meaning hidden <span class="gradient-text">in your footage.</span>
+    </h2>
+
+    <p style="
+      font-size: 16px;
+      font-weight: 300;
+      color: var(--on-surface-variant);
+      line-height: 1.8;
+      max-width: 52ch;
+      margin: 0 auto var(--space-2xl) auto;
+    ">
+      See how SemanticEdge turns raw camera feeds into searchable, structured intelligence —
+      without a single frame ever leaving your site.
+    </p>
+
+    <!-- Buttons -->
+    <div
+      style="display: flex; flex-wrap: wrap; gap: var(--space-md); justify-content: center; align-items: center; margin-bottom: var(--space-2xl);">
+      <a href="{% url 'core:book_demo' %}" class="btn btn--primary btn--hero">
+        <span>Request Demo</span>
+        <span class="material-symbols-outlined">chevron_right</span>
+      </a>
+      <a href="{% url 'docs:list' %}" class="btn btn--ghost btn--hero">
+        <span>Read Docs</span>
+        <span class="material-symbols-outlined">chevron_right</span>
+      </a>
+    </div>
+
+    <!-- Checklist row -->
+    <div
+      style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 0; font-size: 14px; color: var(--on-surface-variant);">
+      <span class="se-cta-check"><span class="se-cta-check-icon">✓</span>No hardware replacement needed</span>
+      <span class="se-cta-sep">·</span>
+      <span class="se-cta-check"><span class="se-cta-check-icon">✓</span>Works with existing IP cameras</span>
+      <span class="se-cta-sep">·</span>
+      <span class="se-cta-check"><span class="se-cta-check-icon">✓</span>Metadata-only cloud sync</span>
+      <span class="se-cta-sep">·</span>
+      <span class="se-cta-check"><span class="se-cta-check-icon">✓</span>Setup in under a day</span>
+    </div>
+
+  </div>
+</section>
+
+<style>
+  .se-cta-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 12px;
+  }
+
+  .se-cta-check-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(76, 217, 100, 0.15);
+    color: var(--success);
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .se-cta-sep {
+    color: rgba(255, 255, 255, 0.2);
+  }
+
+  @media (max-width: 640px) {
+    .se-cta-sep {
+      display: none;
+    }
+  }
+</style>
 
 {% endblock %}
