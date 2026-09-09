@@ -37,6 +37,16 @@ class Camera(models.Model):
         default=True,
         help_text="Inactive cameras are excluded from the dashboard.",
     )
+    night_threshold = models.FloatField(
+        default=60.0,
+        help_text="Grayscale mean intensity threshold below which scene is classified as Night Mode.",
+    )
+    scene_mode = models.CharField(
+        max_length=10,
+        default="day",
+        choices=[("day", "Day Mode"), ("night", "Night Mode")],
+        help_text="Current detected or default scene mode.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -198,3 +208,131 @@ class ObjectCountRecord(models.Model):
 
     def __str__(self) -> str:
         return f"{self.item_type}: {self.total_count} units ({self.camera.name})"
+
+
+class MonitoringZone(models.Model):
+    """
+    Dynamic monitoring zone or tripwire line defined by users directly on the camera feed.
+    Coordinates are stored as normalized [[x, y], ...] points (values between 0.0 and 1.0)
+    so they map correctly across various video and display resolutions.
+    """
+
+    ZONE_TYPE_CHOICES = [
+        ("polygon", "Restricted Area (Polygon)"),
+        ("line", "Tripwire (Line Crossing)"),
+    ]
+
+    camera = models.ForeignKey(
+        Camera,
+        on_delete=models.CASCADE,
+        related_name="monitoring_zones",
+    )
+    name = models.CharField(
+        max_length=100,
+        default="Restricted Zone 1",
+        help_text="User-defined zone label, e.g. 'Warehouse Gate' or 'Perimeter Fence'.",
+    )
+    zone_type = models.CharField(
+        max_length=20,
+        choices=ZONE_TYPE_CHOICES,
+        default="polygon",
+    )
+    coordinates = models.JSONField(
+        default=list,
+        help_text="List of normalized points [[x, y], ...] representing polygon vertices or line endpoints.",
+    )
+    target_classes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of target classes to monitor (e.g. ['person']). Empty implies all classes.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether intrusion detection is currently active for this zone.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "Monitoring Zone"
+        verbose_name_plural = "Monitoring Zones"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.zone_type}) on {self.camera.name}"
+
+
+class TelegramSession(models.Model):
+    """
+    Tracks authenticated session and interaction state for a Telegram user/chat.
+    """
+
+    STATE_CHOICES = [
+        ("IDLE", "Idle / Not Started"),
+        ("AWAITING_USERNAME", "Awaiting Username"),
+        ("AWAITING_PASSWORD", "Awaiting Password"),
+        ("AUTHENTICATED_IDLE", "Authenticated & Ready"),
+        ("AWAITING_FEEDBACK", "Awaiting Feedback"),
+    ]
+
+    chat_id = models.CharField(max_length=64, unique=True, db_index=True)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="telegram_sessions",
+    )
+    is_authenticated = models.BooleanField(default=False)
+    state = models.CharField(max_length=32, choices=STATE_CHOICES, default="IDLE")
+    pending_username = models.CharField(max_length=150, blank=True)
+    last_intent = models.CharField(max_length=64, blank=True)
+    last_query = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_interaction = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-last_interaction"]
+        verbose_name = "Telegram Session"
+        verbose_name_plural = "Telegram Sessions"
+
+    def __str__(self) -> str:
+        user_str = self.user.username if self.user else "Anonymous"
+        status = "Authenticated" if self.is_authenticated else "Unauthenticated"
+        return f"Chat {self.chat_id} ({user_str} - {status})"
+
+
+class TelegramFeedback(models.Model):
+    """
+    Stores user feedback (Yes/No helpfulness) after the assistant serves a request.
+    """
+
+    session = models.ForeignKey(
+        TelegramSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="feedbacks",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="telegram_feedbacks",
+    )
+    chat_id = models.CharField(max_length=64, db_index=True)
+    query_text = models.TextField(blank=True)
+    intent = models.CharField(max_length=64, blank=True)
+    is_helpful = models.BooleanField(help_text="True if Yes, False if No")
+    raw_feedback = models.CharField(max_length=20, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Telegram Feedback"
+        verbose_name_plural = "Telegram Feedback Entries"
+
+    def __str__(self) -> str:
+        status = "Helpful" if self.is_helpful else "Unhelpful"
+        return f"Feedback ({status}) from Chat {self.chat_id} for '{self.intent}'"

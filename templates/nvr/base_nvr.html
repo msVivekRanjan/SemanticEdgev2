@@ -48,13 +48,13 @@
           </span>
         </a>
 
-        <!-- Service 3: Industrial Object Counter -->
+        <!-- Service 3: Object Tracker (Restricted Area Monitoring) -->
         <a href="{% url 'nvr:object_counter' %}"
-          class="nvr-sidebar__item {% if active_tab == 'object_counter' %}nvr-sidebar__item--active{% endif %}"
-          title="Industrial Object Counter (Factories)">
-          <span class="material-symbols-outlined">precision_manufacturing</span>
+          class="nvr-sidebar__item {% if active_tab == 'object_counter' or active_tab == 'restricted_area' %}nvr-sidebar__item--active{% endif %}"
+          title="Object Tracker & Restricted Area Monitoring">
+          <span class="material-symbols-outlined">security</span>
           <span style="position: relative;">
-            Counter
+            Tracker
             {% if not user.is_superuser and user.service_profile and not user.service_profile.has_object_count %}
             <span style="position: absolute; top: -6px; right: -8px; font-size: 10px;">🔒</span>
             {% endif %}
@@ -75,6 +75,14 @@
           title="Object-Class Detection Search">
           <span class="material-symbols-outlined">travel_explore</span>
           <span>Explore</span>
+        </a>
+
+        <!-- Detection Logs -->
+        <a href="{% url 'nvr:logs' %}"
+          class="nvr-sidebar__item {% if active_tab == 'logs' %}nvr-sidebar__item--active{% endif %}"
+          title="Live Detection & Event Logs">
+          <span class="material-symbols-outlined">receipt_long</span>
+          <span>Logs</span>
         </a>
 
         <!-- Export -->

@@ -24,9 +24,11 @@ Usage
 """
 
 
+from numpy.lib import _function_base_impl
 from __future__ import annotations
 
 # from openpyxl.workbook import smart_tags
+import threading
 import argparse
 import sys
 import time
@@ -60,6 +62,34 @@ def _build_writer(cap: cv2.VideoCapture, output_path: str):
 
 
 # ── main loop ─────────────────────────────────────────────────────────────────
+class VideoCaptureThread:
+    def __init__(self, source):
+        self.cap = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
+        print("Width :", self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        print("Height:", self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        print("FPS   :", self.cap.get(cv2.CAP_PROP_FPS))
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        self.frame = None
+        self.running = True
+
+        threading.Thread(target=self.update, daemon=True).start()
+
+    def update(self):
+        while self.running:
+            ret, frame = self.cap.read()
+
+            if ret:
+                self.frame = frame
+
+    def read(self):
+        return self.frame
+
+    def release(self):
+        self.running = False
+        self.cap.release()
+
+#####
 def run(args: argparse.Namespace) -> None:
     # ── initialise modules ────────────────────────────────────────────────────
     csv_logger.init_logger(args.log)
@@ -82,8 +112,7 @@ def run(args: argparse.Namespace) -> None:
 
     # ── open video source ─────────────────────────────────────────────────────
     source = int(args.source) if args.source.isdigit() else args.source
-    cap = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    cap = VideoCaptureThread(source)
     if not cap.isOpened():
         print(f"[ERROR] Cannot open source: {args.source}")
         sys.exit(1)
@@ -102,18 +131,16 @@ def run(args: argparse.Namespace) -> None:
     prev_time = time.perf_counter()
 
     while True:
-        ret, frame = cap.read()
-        # Skip old frames
-        for _ in range(2):
-            cap.grab()
-        if not ret:
-            break
+        frame = cap.read()
+
+        if frame is None:
+            continue
 
         frame_number += 1
 
         # ── detection / tracking ──────────────────────────────────────────────
         if use_tracking:
-            objects = model.track(frame)
+            objects = []
         else:
             # Inject a synthetic track_id = -1 so downstream code is uniform
             raw = model.detect(frame)

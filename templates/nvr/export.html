@@ -16,11 +16,14 @@
   </a>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr; gap: var(--space-lg);">
-  {% if cameras %}
-    <div style="display: grid; grid-template-columns: 1fr; gap: var(--space-lg);">
+{% if cameras %}
+  <div class="nvr-export-layout" style="display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: var(--space-xl); align-items: start;">
+    
+    <!-- ── Left Column: Exporter Form & History Table ────────────────────────── -->
+    <div style="display: flex; flex-direction: column; gap: var(--space-lg); min-width: 0;">
+      
       <!-- Exporter Form Card -->
-      <div class="card card--dark" style="max-width: 760px;">
+      <div class="card card--dark">
         <div class="stats-panel__title" style="display:flex; align-items:center; gap:8px;">
           <span class="material-symbols-outlined" style="color:var(--primary); font-size:18px;">video_file</span>
           <span>New Clip / Video Inference Extraction</span>
@@ -70,7 +73,7 @@
               </span>
             </div>
 
-            <!-- Processing Mode — Video Only vs. Also Save to Logs -->
+            <!-- Processing Mode -->
             <div style="margin-top: 10px;">
               <label class="input-label" style="display: block; margin-bottom: 6px;">Processing Mode</label>
               <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -136,7 +139,7 @@
       </div>
 
       <!-- Export History Table -->
-      <div class="card card--dark" style="padding: 0; overflow-x: auto; max-width: 760px;">
+      <div class="card card--dark" style="padding: 0; overflow-x: auto;">
         <div style="padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; font-weight: 700; color: var(--on-surface); text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: space-between; align-items: center;">
           <span>Export History & Evidence Repository</span>
           <span style="font-size: 11px; color: var(--outline); font-family: var(--font-mono); font-weight: 400; text-transform: none;">{{ export_history|length }} files</span>
@@ -150,15 +153,20 @@
               <th>File Size</th>
               <th>Exported On</th>
               <th>Status</th>
-              <th>Action</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for item in export_history %}
-              <tr>
-                <td style="color: var(--on-surface); font-weight: 500; font-family: var(--font-mono); font-size: 11px;">{{ item.name }}</td>
+              <tr style="cursor: pointer;" onclick="previewExportVideo('{{ item.url|default:'#' }}', '{{ item.name }}', '{{ item.camera }}', '{{ item.size }}');">
+                <td style="color: var(--on-surface); font-weight: 500; font-family: var(--font-mono); font-size: 11px;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">movie</span>
+                    <span>{{ item.name }}</span>
+                  </div>
+                </td>
                 <td>{{ item.camera }}</td>
-                <td>{{ item.format }}</td>
+                <td><span class="nvr-count-chip" style="font-size: 10px;">{{ item.format }}</span></td>
                 <td style="font-family: var(--font-mono); font-size: 11px;">{{ item.size }}</td>
                 <td style="font-family: var(--font-mono); font-size: 11px;">{{ item.created_at }}</td>
                 <td>
@@ -166,26 +174,97 @@
                     ● {{ item.status }}
                   </span>
                 </td>
-                <td>
-                  <a href="{{ item.url|default:'#' }}" download="{{ item.name }}" class="btn btn--ghost btn--sm">
-                    <span class="material-symbols-outlined" style="font-size: 14px;">download</span>
-                    Download
-                  </a>
+                <td onclick="event.stopPropagation();">
+                  <div style="display: flex; gap: 6px;">
+                    <button
+                      type="button"
+                      class="btn btn--primary btn--sm"
+                      onclick="previewExportVideo('{{ item.url|default:'#' }}', '{{ item.name }}', '{{ item.camera }}', '{{ item.size }}')"
+                      title="Preview annotated video in the player"
+                    >
+                      <span class="material-symbols-outlined" style="font-size: 14px;">play_circle</span>
+                      <span>Preview</span>
+                    </button>
+                    <a href="{{ item.url|default:'#' }}" download="{{ item.name }}" class="btn btn--ghost btn--sm" title="Download file to local computer">
+                      <span class="material-symbols-outlined" style="font-size: 14px;">download</span>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--outline); padding: 24px;">
+                  No exported evidence files found in repository yet.
                 </td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+
     </div>
-  {% else %}
-    <div class="empty-state">
-      <span class="material-symbols-outlined">video_file</span>
-      <h3 class="empty-state__title">No Cameras Available for Export</h3>
-      <p class="empty-state__body">Configure a camera feed to record and extract video clips. You can still upload a video file using the "Upload Custom Video File" option above.</p>
+
+    <!-- ── Right Column: Sticky Annotated Video Preview Panel ────────────────── -->
+    <div style="position: sticky; top: 16px;">
+      <div class="card card--dark" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div class="stats-panel__title" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+            <span class="material-symbols-outlined" style="color: var(--primary); font-size: 20px;">smart_display</span>
+            <span>Annotated Video Preview</span>
+          </div>
+          <span id="preview-badge" class="nvr-count-chip" style="background: rgba(109,94,245,0.15); display: none;">H.264 MP4</span>
+        </div>
+
+        <!-- Embedded Video Player -->
+        <div style="background: #000; border-radius: var(--radius); overflow: hidden; min-height: 240px; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid rgba(255,255,255,0.06);">
+          <video
+            id="evidence-video-player"
+            controls
+            playsinline
+            preload="metadata"
+            style="width: 100%; height: auto; max-height: 380px; display: none; object-fit: contain;"
+            onerror="document.getElementById('evidence-video-placeholder').innerHTML='<div style=\'padding:24px;text-align:center;color:var(--outline)\'><span class=\'material-symbols-outlined\' style=\'font-size:40px;color:#e57373;opacity:0.7;\'>error</span><p style=\'margin-top:8px;font-size:12px;\'>Video could not be loaded. The file may still be processing or the codec is unsupported.</p></div>'; document.getElementById('evidence-video-placeholder').style.display='block'; this.style.display='none';"
+          ></video>
+
+          <div id="evidence-video-placeholder" style="padding: 40px 24px; text-align: center; color: var(--outline);">
+            <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.4; margin-bottom: 10px; display: block; color: var(--primary);">movie</span>
+            <h4 style="color: var(--on-surface); font-size: 14px; margin-bottom: 6px; font-weight: 600;">No Video Selected</h4>
+            <p style="font-size: 12px; color: var(--on-surface-variant); max-width: 280px; margin: 0 auto; line-height: 1.4;">
+              Click "Preview" on any export in the repository to inspect the annotated bounding boxes, class labels, and tracks.
+            </p>
+          </div>
+        </div>
+
+        <!-- Selected Video Metadata -->
+        <div id="preview-meta" style="display: none; margin-top: 14px; padding: 14px; background: rgba(255,255,255,0.03); border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.06); font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: var(--outline);">File Name:</span>
+            <span id="preview-filename" class="mono" style="color: var(--on-surface); font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">video.mp4</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: var(--outline);">Source / Camera:</span>
+            <span id="preview-camera" style="color: var(--on-surface);">Camera</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 14px;">
+            <span style="color: var(--outline);">File Size:</span>
+            <span id="preview-size" class="mono" style="color: var(--on-surface);">0 MB</span>
+          </div>
+          <a id="preview-download-btn" href="#" download class="btn btn--primary btn--sm btn--full">
+            <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
+            <span>Download Evidence File</span>
+          </a>
+        </div>
+      </div>
     </div>
-  {% endif %}
-</div>
+
+  </div>
+{% else %}
+  <div class="empty-state">
+    <span class="material-symbols-outlined">video_file</span>
+    <h3 class="empty-state__title">No Cameras Available for Export</h3>
+    <p class="empty-state__body">Configure a camera feed to record and extract video clips. You can still upload a video file using the "Upload Custom Video File" option above.</p>
+  </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -231,11 +310,60 @@ function handleDrop(event) {
   }
 }
 
-// Label video file picker on click to drop zone
-document.getElementById('drop-zone').addEventListener('click', function(e) {
-  if (e.target !== document.getElementById('video-file-input')) {
-    document.getElementById('video-file-input').click();
-  }
+// Click to browse in drop zone
+const dropZone = document.getElementById('drop-zone');
+if (dropZone) {
+  dropZone.addEventListener('click', function(e) {
+    if (e.target !== document.getElementById('video-file-input')) {
+      document.getElementById('video-file-input').click();
+    }
+  });
+}
+
+function previewExportVideo(url, name, camera, size) {
+  if (!url || url === '#' || url === '') return;
+  const player = document.getElementById('evidence-video-player');
+  const placeholder = document.getElementById('evidence-video-placeholder');
+  const meta = document.getElementById('preview-meta');
+  const badge = document.getElementById('preview-badge');
+  const fn = document.getElementById('preview-filename');
+  const cam = document.getElementById('preview-camera');
+  const sz = document.getElementById('preview-size');
+  const dl = document.getElementById('preview-download-btn');
+
+  if (!player) return;
+
+  player.src = url;
+  player.style.display = 'block';
+  placeholder.style.display = 'none';
+  meta.style.display = 'block';
+  badge.style.display = 'inline-flex';
+
+  fn.textContent = name;
+  cam.textContent = camera;
+  sz.textContent = size;
+  dl.href = url;
+  dl.download = name;
+
+  player.load();
+  player.play().catch(function() {
+    // Autoplay prevented by browser, controls remain available
+  });
+}
+
+// Auto-select first exported video on page load if available
+document.addEventListener('DOMContentLoaded', function() {
+  {% if export_history %}
+    const firstItem = {
+      url: "{{ export_history.0.url|default:'' }}",
+      name: "{{ export_history.0.name }}",
+      camera: "{{ export_history.0.camera }}",
+      size: "{{ export_history.0.size }}"
+    };
+    if (firstItem.url) {
+      previewExportVideo(firstItem.url, firstItem.name, firstItem.camera, firstItem.size);
+    }
+  {% endif %}
 });
 </script>
 {% endblock %}

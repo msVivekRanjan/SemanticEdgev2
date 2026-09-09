@@ -1,0 +1,718 @@
+{% extends "nvr/base_nvr.html" %}
+{% load static %}
+
+{% block title %}Restricted Area Monitoring &amp; Zone Editor — SemanticEdge NVR{% endblock %}
+
+{% block extra_head %}
+<style>
+  .zone-editor-container {
+    position: relative;
+    width: 100%;
+    min-height: 480px;
+    background: #000;
+    border-radius: var(--radius);
+    overflow: hidden;
+    user-select: none;
+  }
+  .zone-stream-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .zone-svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+  }
+  .zone-polygon {
+    fill: rgba(70, 230, 120, 0.2);
+    stroke: #46e678;
+    stroke-width: 2;
+    cursor: move;
+    transition: fill 0.15s;
+  }
+  .zone-polygon.selected {
+    fill: rgba(109, 94, 245, 0.3);
+    stroke: #6d5ef5;
+    stroke-width: 3;
+  }
+  .zone-line {
+    stroke: #00e5ff;
+    stroke-width: 3;
+    cursor: move;
+  }
+  .zone-line.selected {
+    stroke: #ff9100;
+    stroke-width: 4;
+  }
+  .zone-handle {
+    fill: #ffffff;
+    stroke: #6d5ef5;
+    stroke-width: 2;
+    r: 6;
+    cursor: grab;
+    transition: r 0.15s;
+  }
+  .zone-handle:hover {
+    r: 9;
+    fill: #ffea00;
+  }
+  .zone-handle:active {
+    cursor: grabbing;
+  }
+  .zone-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .zone-card.active-selected {
+    border-color: var(--primary);
+    background: rgba(109, 94, 245, 0.08);
+  }
+  .mode-indicator-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .mode-pill-day {
+    background: rgba(70, 220, 130, 0.15);
+    border: 1px solid rgba(70, 220, 130, 0.4);
+    color: #46e678;
+  }
+  .mode-pill-night {
+    background: rgba(255, 175, 70, 0.15);
+    border: 1px solid rgba(255, 175, 70, 0.4);
+    color: #ffaf46;
+  }
+</style>
+{% endblock %}
+
+{% block nvr_content %}
+{% if not has_service_access %}
+  {% include "nvr/service_locked.html" %}
+{% else %}
+
+<!-- ── Top Toolbar ────────────────────────────────────────────────────────── -->
+<div class="nvr-toolbar">
+  <div class="nvr-toolbar__title">
+    <span class="material-symbols-outlined" style="color: var(--primary);">security</span>
+    <span>Object Tracker &amp; Restricted Area Monitoring</span>
+    {% if selected_camera %}
+      <span style="font-size: 13px; font-weight: 400; color: var(--outline); font-family: var(--font-mono); margin-left: 8px;">
+        [{{ selected_camera.name }}]
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="nvr-filter-group">
+    <!-- Camera Switcher -->
+    <form method="get" id="camera-select-form" style="display: flex; gap: 8px;">
+      <select name="camera" class="nvr-select" onchange="this.form.submit()">
+        {% for cam in cameras %}
+          <option value="{{ cam.id }}" {% if selected_camera.id == cam.id %}selected{% endif %}>
+            📹 {{ cam.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+
+    <!-- Zone Editor Mode Buttons -->
+    <button type="button" class="btn btn--ghost btn--sm" id="btn-add-polygon" title="Draw a polygonal restricted zone">
+      <span class="material-symbols-outlined" style="font-size: 16px;">polyline</span>
+      <span>+ Draw Polygon</span>
+    </button>
+    <button type="button" class="btn btn--ghost btn--sm" id="btn-add-line" title="Draw a line-crossing tripwire">
+      <span class="material-symbols-outlined" style="font-size: 16px;">timeline</span>
+      <span>+ Draw Tripwire</span>
+    </button>
+    <button type="button" class="btn btn--primary btn--sm" id="btn-save-zones" title="Save zones to database">
+      <span class="material-symbols-outlined" style="font-size: 16px;">save</span>
+      <span>Save Zones</span>
+    </button>
+  </div>
+</div>
+
+<!-- ── Main Grid ──────────────────────────────────────────────────────────── -->
+<div class="nvr-live-grid" style="display: grid; grid-template-columns: 1fr 380px; gap: var(--space-lg); align-items: start;">
+
+  <!-- Left: Live Video Feed with Dynamic Zone Editor Canvas/SVG -->
+  <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+    <div class="zone-editor-container" id="editor-wrapper">
+      {% if selected_camera %}
+        <img
+          id="camera-stream"
+          class="zone-stream-img"
+          src="{% url 'nvr:counter_stream' selected_camera.id %}"
+          alt="Live Stream for {{ selected_camera.name }}"
+        />
+
+        <!-- Interactive SVG Overlay Layer for Dynamic Monitoring Zones -->
+        <svg id="zone-svg" class="zone-svg-layer" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+          <!-- Rendered zones and handles appear here -->
+        </svg>
+
+        <!-- Live Top HUD Overlay -->
+        <div class="nvr-live-overlay-hud" style="pointer-events: none; z-index: 20;">
+          <div class="nvr-live-hud-badge" style="background: rgba(18,20,24,0.85); border-color: rgba(255,255,255,0.15);">
+            <span class="status-dot" style="background-color: var(--primary);"></span>
+            <span>RESTRICTED AREA MONITOR • {{ selected_camera.name }}</span>
+          </div>
+
+          <div id="hud-day-night-mode" class="mode-indicator-pill mode-pill-day">
+            <span class="material-symbols-outlined" style="font-size: 14px;">light_mode</span>
+            <span id="hud-mode-text">DAY MODE</span>
+          </div>
+        </div>
+
+        <!-- Drawing Instruction Banner (hidden by default) -->
+        <div id="draw-banner" style="display: none; position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 30; background: rgba(18,20,24,0.92); border: 1px solid var(--primary); padding: 8px 18px; border-radius: 9999px; font-size: 12px; color: var(--on-surface); align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+          <span id="draw-banner-text">Click on the feed to place polygon points.</span>
+          <button type="button" class="btn btn--primary btn--sm" id="btn-finish-drawing" style="padding: 2px 10px; font-size: 11px;">Done</button>
+          <button type="button" class="btn btn--ghost btn--sm" id="btn-cancel-drawing" style="padding: 2px 10px; font-size: 11px;">Cancel</button>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <span class="material-symbols-outlined">videocam_off</span>
+          <h2 class="empty-state__title">No Camera Configured</h2>
+          <p class="empty-state__body">Register a video source in Settings to set up restricted monitoring zones.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Active Zone Quick Controls Bar -->
+    <div class="card card--dark" style="padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="color: var(--outline);">Editor Controls:</span>
+        <span style="color: var(--on-surface-variant);">Click handles to reposition vertices</span>
+        <span style="color: var(--outline);">•</span>
+        <span style="color: var(--on-surface-variant);">Drag zone to relocate area</span>
+      </div>
+      <div id="save-status-indicator" style="font-family: var(--font-mono); color: var(--outline); font-size: 11px;">
+        Zones Synced
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Zones List, Day/Night Calibration & Intrusion Telemetry -->
+  <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+
+    <!-- Day / Night Scene Detection & Calibration Card -->
+    <div class="card card--dark" style="padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div class="stats-panel__title" style="display: flex; align-items: center; gap: 6px; margin: 0;">
+          <span class="material-symbols-outlined" style="color: var(--tertiary); font-size: 18px;">contrast</span>
+          <span>Day / Night Scene Analysis</span>
+        </div>
+        <span id="scene-mode-badge" class="mode-indicator-pill mode-pill-day">
+          DAY
+        </span>
+      </div>
+
+      <div style="margin-bottom: 14px; font-size: 12px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span style="color: var(--outline);">Mean Grayscale Intensity:</span>
+          <span id="scene-intensity-val" class="mono" style="color: var(--on-surface); font-weight: 600;">-- LUX</span>
+        </div>
+        <div style="background: rgba(255,255,255,0.06); height: 6px; border-radius: 3px; overflow: hidden;">
+          <div id="scene-intensity-bar" style="background: var(--tertiary); height: 100%; width: 50%; transition: width 0.3s;"></div>
+        </div>
+      </div>
+
+      <!-- Configurable Night Mode Threshold Setting -->
+      <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label class="input-label" style="margin: 0; font-size: 11px;">Night Mode Threshold</label>
+          <span id="threshold-display" class="mono" style="color: var(--primary); font-size: 12px; font-weight: 600;">
+            {{ night_threshold|floatformat:1 }}
+          </span>
+        </div>
+        <input
+          type="range"
+          id="night-threshold-slider"
+          min="15"
+          max="160"
+          step="1"
+          value="{{ night_threshold|default:60.0 }}"
+          style="width: 100%; accent-color: var(--primary); cursor: pointer;"
+          oninput="document.getElementById('threshold-display').textContent = this.value;"
+          onchange="saveNightThreshold(this.value);"
+        />
+        <p style="font-size: 11px; color: var(--outline); margin: 6px 0 0 0; line-height: 1.3;">
+          Frames with smoothed grayscale intensity below this calibrated threshold switch to Night Mode.
+        </p>
+      </div>
+    </div>
+
+    <!-- Monitoring Zones Repository Card -->
+    <div class="card card--dark" style="padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div class="stats-panel__title" style="display: flex; align-items: center; gap: 6px; margin: 0;">
+          <span class="material-symbols-outlined" style="color: var(--primary); font-size: 18px;">dashboard</span>
+          <span>Configured Zones</span>
+        </div>
+        <span id="zones-count-pill" class="nvr-count-chip">0 zones</span>
+      </div>
+
+      <!-- Dynamic Zone Cards Container -->
+      <div id="zones-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto;">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+
+    <!-- Real-Time Perimeter Intrusion Logs -->
+    <div class="card card--dark" style="padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div class="stats-panel__title" style="display: flex; align-items: center; gap: 6px; margin: 0;">
+          <span class="material-symbols-outlined" style="color: var(--error); font-size: 18px;">notifications_active</span>
+          <span>Recent Intrusions</span>
+        </div>
+        <a href="{% url 'nvr:logs' %}" class="text-link" style="font-size: 11px;">View All Logs ↗</a>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto;">
+        {% for ev in intrusion_events %}
+          <div style="padding: 10px; background: rgba(255,255,255,0.02); border-left: 3px solid var(--error); border-radius: 4px; font-size: 11px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-weight: 600; color: var(--on-surface);">{{ ev.class_name|title }} #{{ ev.track_id }}</span>
+              <span class="mono" style="color: var(--outline);">{{ ev.created_at|date:"H:i:s" }}</span>
+            </div>
+            <div style="color: var(--on-surface-variant); margin-bottom: 4px;">{{ ev.line_crossing_status }}</div>
+            {% if ev.snapshot_path %}
+              <a href="{{ ev.snapshot_path }}" target="_blank" class="text-link" style="font-size: 11px;">View Snapshot ↗</a>
+            {% endif %}
+          </div>
+        {% empty %}
+          <div style="text-align: center; color: var(--outline); padding: 18px 10px; font-size: 12px;">
+            No intrusions logged yet. Active perimeters are clear.
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const cameraId = "{{ selected_camera.id|default:'' }}";
+  if (!cameraId) return;
+
+  // State
+  let zones = [];
+  let selectedZoneIndex = -1;
+  let drawingMode = null; // 'polygon' | 'line' | null
+  let currentDraftPoints = [];
+  let dragTarget = null; // { type: 'handle' | 'zone', zoneIdx, pointIdx, startX, startY, origCoords }
+
+  const svg = document.getElementById('zone-svg');
+  const zonesList = document.getElementById('zones-list');
+  const zonesCountPill = document.getElementById('zones-count-pill');
+  const drawBanner = document.getElementById('draw-banner');
+  const drawBannerText = document.getElementById('draw-banner-text');
+  const saveStatus = document.getElementById('save-status-indicator');
+
+  // Load existing zones from DB API
+  function loadZones() {
+    fetch(`/nvr/api/camera/${cameraId}/zones/`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && Array.isArray(data.zones)) {
+          zones = data.zones;
+          renderAll();
+        }
+      })
+      .catch(err => console.error('Error loading zones:', err));
+  }
+
+  // Render SVG zones & sidebar list
+  function renderAll() {
+    renderSvg();
+    renderSidebarList();
+  }
+
+  function renderSvg() {
+    if (!svg) return;
+    svg.innerHTML = '';
+
+    // Render completed zones
+    zones.forEach((zone, zIdx) => {
+      const isSelected = (zIdx === selectedZoneIndex);
+      const coords = zone.coordinates || [];
+      if (coords.length === 0) return;
+
+      if (zone.zone_type === 'polygon' && coords.length >= 3) {
+        const pointsStr = coords.map(p => `${p[0] * 1000},${p[1] * 1000}`).join(' ');
+        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        poly.setAttribute('points', pointsStr);
+        poly.setAttribute('class', `zone-polygon ${isSelected ? 'selected' : ''}`);
+        poly.addEventListener('mousedown', (e) => onZoneMouseDown(e, zIdx));
+        svg.appendChild(poly);
+
+        // Render handles if selected
+        if (isSelected) {
+          coords.forEach((p, pIdx) => {
+            const handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            handle.setAttribute('cx', p[0] * 1000);
+            handle.setAttribute('cy', p[1] * 1000);
+            handle.setAttribute('class', 'zone-handle');
+            handle.addEventListener('mousedown', (e) => onHandleMouseDown(e, zIdx, pIdx));
+            svg.appendChild(handle);
+          });
+        }
+      } else if (zone.zone_type === 'line' && coords.length >= 2) {
+        const p1 = coords[0];
+        const p2 = coords[1];
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', p1[0] * 1000);
+        line.setAttribute('y1', p1[1] * 1000);
+        line.setAttribute('x2', p2[0] * 1000);
+        line.setAttribute('y2', p2[1] * 1000);
+        line.setAttribute('class', `zone-line ${isSelected ? 'selected' : ''}`);
+        line.addEventListener('mousedown', (e) => onZoneMouseDown(e, zIdx));
+        svg.appendChild(line);
+
+        if (isSelected) {
+          [p1, p2].forEach((p, pIdx) => {
+            const handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            handle.setAttribute('cx', p[0] * 1000);
+            handle.setAttribute('cy', p[1] * 1000);
+            handle.setAttribute('class', 'zone-handle');
+            handle.addEventListener('mousedown', (e) => onHandleMouseDown(e, zIdx, pIdx));
+            svg.appendChild(handle);
+          });
+        }
+      }
+    });
+
+    // Render in-progress draft points
+    if (drawingMode && currentDraftPoints.length > 0) {
+      if (drawingMode === 'polygon') {
+        const pointsStr = currentDraftPoints.map(p => `${p[0] * 1000},${p[1] * 1000}`).join(' ');
+        const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        polyline.setAttribute('points', pointsStr);
+        polyline.setAttribute('style', 'fill: none; stroke: #ffea00; stroke-width: 2; stroke-dasharray: 6;');
+        svg.appendChild(polyline);
+      } else if (drawingMode === 'line' && currentDraftPoints.length === 1) {
+        const p1 = currentDraftPoints[0];
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', p1[0] * 1000);
+        circle.setAttribute('cy', p1[1] * 1000);
+        circle.setAttribute('r', '8');
+        circle.setAttribute('style', 'fill: #ffea00;');
+        svg.appendChild(circle);
+      }
+
+      currentDraftPoints.forEach(p => {
+        const ptDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ptDot.setAttribute('cx', p[0] * 1000);
+        ptDot.setAttribute('cy', p[1] * 1000);
+        ptDot.setAttribute('r', '6');
+        ptDot.setAttribute('style', 'fill: #fff; stroke: #ffea00; stroke-width: 2;');
+        svg.appendChild(ptDot);
+      });
+    }
+  }
+
+  function renderSidebarList() {
+    if (!zonesList) return;
+    zonesList.innerHTML = '';
+    zonesCountPill.textContent = `${zones.length} zone${zones.length === 1 ? '' : 's'}`;
+
+    if (zones.length === 0) {
+      zonesList.innerHTML = `
+        <div style="text-align: center; color: var(--outline); font-size: 11px; padding: 18px 10px;">
+          No monitoring zones defined. Use <strong>+ Draw Polygon</strong> or <strong>+ Draw Tripwire</strong> to protect perimeters.
+        </div>
+      `;
+      return;
+    }
+
+    zones.forEach((zone, idx) => {
+      const card = document.createElement('div');
+      card.className = `zone-card ${idx === selectedZoneIndex ? 'active-selected' : ''}`;
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <input
+            type="text"
+            value="${zone.name}"
+            class="nvr-search-input"
+            style="font-size: 12px; padding: 4px 8px; width: 65%; font-weight: 600;"
+            onchange="window.updateZoneName(${idx}, this.value)"
+          />
+          <button type="button" class="btn btn--ghost btn--sm" style="color: var(--error); padding: 4px 8px;" onclick="window.deleteZone(${idx})" title="Delete Zone">
+            <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+          </button>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--outline);">
+          <span>${zone.zone_type === 'polygon' ? 'Restricted Polygon' : 'Tripwire Line'} (${zone.coordinates.length} pts)</span>
+          <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+            <input type="checkbox" ${zone.is_active ? 'checked' : ''} onchange="window.toggleZoneActive(${idx}, this.checked)" />
+            <span>Active</span>
+          </label>
+        </div>
+      `;
+      card.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+          selectedZoneIndex = idx;
+          renderAll();
+        }
+      });
+      zonesList.appendChild(card);
+    });
+  }
+
+  // Global zone helpers
+  window.updateZoneName = function(idx, newName) {
+    if (zones[idx]) {
+      zones[idx].name = newName.trim();
+      markDirty();
+    }
+  };
+
+  window.toggleZoneActive = function(idx, isActive) {
+    if (zones[idx]) {
+      zones[idx].is_active = isActive;
+      markDirty();
+    }
+  };
+
+  window.deleteZone = function(idx) {
+    zones.splice(idx, 1);
+    if (selectedZoneIndex === idx) selectedZoneIndex = -1;
+    markDirty();
+    renderAll();
+  };
+
+  function markDirty() {
+    saveStatus.textContent = 'Unsaved Changes *';
+    saveStatus.style.color = '#ffb300';
+  }
+
+  function getNormalizedPos(e) {
+    const rect = svg.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    return [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000];
+  }
+
+  // Drawing mode handlers
+  svg.addEventListener('click', function(e) {
+    if (!drawingMode) return;
+    const pos = getNormalizedPos(e);
+
+    if (drawingMode === 'polygon') {
+      currentDraftPoints.push(pos);
+      if (currentDraftPoints.length >= 3) {
+        drawBannerText.textContent = `${currentDraftPoints.length} points placed. Click 'Done' to complete polygon.`;
+      }
+      renderSvg();
+    } else if (drawingMode === 'line') {
+      currentDraftPoints.push(pos);
+      if (currentDraftPoints.length >= 2) {
+        finishDrawing();
+      } else {
+        drawBannerText.textContent = `Point 1 placed. Click to place the second endpoint.`;
+        renderSvg();
+      }
+    }
+  });
+
+  function startDrawing(mode) {
+    drawingMode = mode;
+    currentDraftPoints = [];
+    selectedZoneIndex = -1;
+    drawBanner.style.display = 'flex';
+    drawBannerText.textContent = mode === 'polygon'
+      ? 'Click points on the feed to outline the restricted polygon.'
+      : 'Click 2 points to define the tripwire crossing line.';
+    renderSvg();
+  }
+
+  function finishDrawing() {
+    if (drawingMode === 'polygon' && currentDraftPoints.length >= 3) {
+      zones.push({
+        name: `Restricted Zone ${zones.length + 1}`,
+        zone_type: 'polygon',
+        coordinates: currentDraftPoints,
+        target_classes: ['person'],
+        is_active: true,
+      });
+      selectedZoneIndex = zones.length - 1;
+      markDirty();
+    } else if (drawingMode === 'line' && currentDraftPoints.length >= 2) {
+      zones.push({
+        name: `Tripwire ${zones.length + 1}`,
+        zone_type: 'line',
+        coordinates: currentDraftPoints.slice(0, 2),
+        target_classes: ['person'],
+        is_active: true,
+      });
+      selectedZoneIndex = zones.length - 1;
+      markDirty();
+    }
+    cancelDrawing();
+  }
+
+  function cancelDrawing() {
+    drawingMode = null;
+    currentDraftPoints = [];
+    drawBanner.style.display = 'none';
+    renderAll();
+  }
+
+  document.getElementById('btn-add-polygon').addEventListener('click', () => startDrawing('polygon'));
+  document.getElementById('btn-add-line').addEventListener('click', () => startDrawing('line'));
+  document.getElementById('btn-finish-drawing').addEventListener('click', finishDrawing);
+  document.getElementById('btn-cancel-drawing').addEventListener('click', cancelDrawing);
+
+  // Dragging Handlers
+  function onHandleMouseDown(e, zIdx, pIdx) {
+    e.stopPropagation();
+    selectedZoneIndex = zIdx;
+    const pos = getNormalizedPos(e);
+    dragTarget = {
+      type: 'handle',
+      zoneIdx: zIdx,
+      pointIdx: pIdx,
+      startX: pos[0],
+      startY: pos[1],
+    };
+    renderAll();
+  }
+
+  function onZoneMouseDown(e, zIdx) {
+    if (drawingMode) return;
+    selectedZoneIndex = zIdx;
+    const pos = getNormalizedPos(e);
+    dragTarget = {
+      type: 'zone',
+      zoneIdx: zIdx,
+      startX: pos[0],
+      startY: pos[1],
+      origCoords: zones[zIdx].coordinates.map(p => [...p]),
+    };
+    renderAll();
+  }
+
+  window.addEventListener('mousemove', function(e) {
+    if (!dragTarget) return;
+    const pos = getNormalizedPos(e);
+    const z = zones[dragTarget.zoneIdx];
+    if (!z) return;
+
+    if (dragTarget.type === 'handle') {
+      z.coordinates[dragTarget.pointIdx] = pos;
+      markDirty();
+      renderSvg();
+    } else if (dragTarget.type === 'zone') {
+      const dx = pos[0] - dragTarget.startX;
+      const dy = pos[1] - dragTarget.startY;
+      z.coordinates = dragTarget.origCoords.map(p => [
+        Math.max(0, Math.min(1, Math.round((p[0] + dx) * 1000) / 1000)),
+        Math.max(0, Math.min(1, Math.round((p[1] + dy) * 1000) / 1000)),
+      ]);
+      markDirty();
+      renderSvg();
+    }
+  });
+
+  window.addEventListener('mouseup', function() {
+    if (dragTarget) {
+      dragTarget = null;
+      renderAll();
+    }
+  });
+
+  // Save zones to DB API
+  document.getElementById('btn-save-zones').addEventListener('click', function() {
+    saveStatus.textContent = 'Saving...';
+    fetch(`/nvr/api/camera/${cameraId}/zones/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}',
+      },
+      body: JSON.stringify({ zones: zones }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          saveStatus.textContent = 'Zones Saved ✓';
+          saveStatus.style.color = '#46e678';
+          setTimeout(() => { saveStatus.textContent = 'Zones Synced'; saveStatus.style.color = 'var(--outline)'; }, 3000);
+        }
+      })
+      .catch(err => {
+        saveStatus.textContent = 'Save Failed!';
+        saveStatus.style.color = 'var(--error)';
+      });
+  });
+
+  // Save Day/Night Threshold
+  window.saveNightThreshold = function(val) {
+    fetch(`/nvr/api/camera/${cameraId}/night-threshold/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}',
+      },
+      body: JSON.stringify({ night_threshold: parseFloat(val) }),
+    })
+      .then(res => res.json())
+      .catch(err => console.error('Error saving threshold:', err));
+  };
+
+  // Poll Day/Night telemetry stats
+  function pollTelemetry() {
+    fetch(`/nvr/camera/${cameraId}/stats/`)
+      .then(res => res.json())
+      .then(stats => {
+        const mode = stats.scene_mode || 'day';
+        const intensity = stats.mean_intensity || 0;
+
+        const hudPill = document.getElementById('hud-day-night-mode');
+        const hudText = document.getElementById('hud-mode-text');
+        const badge = document.getElementById('scene-mode-badge');
+        const intensityVal = document.getElementById('scene-intensity-val');
+        const intensityBar = document.getElementById('scene-intensity-bar');
+
+        if (hudPill && hudText) {
+          hudText.textContent = mode === 'night' ? 'NIGHT MODE' : 'DAY MODE';
+          hudPill.className = `mode-indicator-pill ${mode === 'night' ? 'mode-pill-night' : 'mode-pill-day'}`;
+        }
+        if (badge) {
+          badge.textContent = mode.toUpperCase();
+          badge.className = `mode-indicator-pill ${mode === 'night' ? 'mode-pill-night' : 'mode-pill-day'}`;
+        }
+        if (intensityVal) intensityVal.textContent = `${intensity.toFixed(1)} LUX`;
+        if (intensityBar) intensityBar.style.width = `${Math.min(100, Math.max(5, (intensity / 200) * 100))}%`;
+      })
+      .catch(() => {});
+  }
+
+  loadZones();
+  setInterval(pollTelemetry, 3000);
+  pollTelemetry();
+})();
+</script>
+{% endblock %}

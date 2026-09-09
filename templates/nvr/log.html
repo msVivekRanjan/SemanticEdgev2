@@ -1,146 +1,176 @@
-{% extends "base.html" %}
+{% extends "nvr/base_nvr.html" %}
 {% load static %}
 
-{% block title %}Detection Logs — {{ camera.name }} | SemanticEdge{% endblock %}
-{% block meta_description %}Detection and tracking log records for {{ camera.name }}.{% endblock %}
+{% block title %}Detection Logs — {{ camera.name|default:"All Cameras" }} | SemanticEdge NVR{% endblock %}
 
-{% block content %}
-<div class="log-layout" style="padding-top: calc(var(--nav-height) + var(--space-xl)); max-width: 1200px; margin: 0 auto; padding-left: 20px; padding-right: 20px;">
-  <!-- Header -->
-  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">
-    <div>
-      <div style="display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-xs);">
-        <a href="{% url 'nvr:live' %}" class="text-link text-link--muted" style="font-size: 11px;">All Cameras</a>
-        <span style="color: var(--outline-variant);">/</span>
-        <a href="{% url 'nvr:camera_live' camera.id %}" class="text-link text-link--muted" style="font-size: 11px;">{{ camera.name }}</a>
-      </div>
-      <h1 style="font-size: clamp(24px, 3vw, 36px); font-weight: 800; color: var(--on-surface);">
-        Detection &amp; Event Logs
-      </h1>
-      <p class="mono" style="color: var(--outline); font-size: 11px; margin-top: 4px;">
-        Camera Target: {{ camera.name }} [ID: {{ camera.id }}]
-      </p>
-    </div>
-
-    <div style="display: flex; gap: 10px;">
-      <a href="{% url 'nvr:camera_live' camera.id %}" class="btn btn--primary btn--sm">
-        <span class="material-symbols-outlined" style="font-size: 16px;">videocam</span>
-        Live Feed
-      </a>
-      <a href="{% url 'nvr:live' %}" class="btn btn--ghost btn--sm">
-        <span class="material-symbols-outlined" style="font-size: 16px;">grid_view</span>
-        Grid View
-      </a>
-    </div>
-  </div>
-
-  {% if error %}
-    <div class="alert alert--error">{{ error }}</div>
-  {% endif %}
-
-  <!-- Log Table Card -->
-  <div class="card card--dark" style="padding: 0; overflow-x: auto; margin-bottom: var(--space-3xl);">
-    {% if log_events %}
-      <table class="log-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
-        <thead>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; color: var(--on-surface-variant);">
-            <th style="padding: 10px 14px;">Timestamp</th>
-            <th style="padding: 10px 14px;">Frame</th>
-            <th style="padding: 10px 14px;">Track ID</th>
-            <th style="padding: 10px 14px;">Class</th>
-            <th style="padding: 10px 14px;">Confidence</th>
-            <th style="padding: 10px 14px;">Bounding Box</th>
-            <th style="padding: 10px 14px;">Snapshot</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for ev in log_events %}
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
-              <td style="padding: 10px 14px; font-family: var(--font-mono); color: var(--outline);">{{ ev.created_at|date:"Y-m-d H:i:s" }}</td>
-              <td style="padding: 10px 14px; font-family: var(--font-mono);">{{ ev.frame_number }}</td>
-              <td style="padding: 10px 14px; font-family: var(--font-mono);">
-                {% if ev.track_id >= 0 %}
-                  <span style="color: var(--primary);">#{{ ev.track_id }}</span>
-                {% else %}
-                  <span style="color: var(--outline);">N/A</span>
-                {% endif %}
-              </td>
-              <td style="padding: 10px 14px;">
-                <span class="class-badge class--{{ ev.class_name|lower }}">
-                  <span class="class-dot"></span>
-                  {{ ev.class_name|upper }}
-                </span>
-              </td>
-              <td style="padding: 10px 14px; font-family: var(--font-mono); color: var(--primary);">{{ ev.confidence|floatformat:2 }}</td>
-              <td style="padding: 10px 14px; font-family: var(--font-mono); font-size: 11px; color: var(--on-surface-variant);">
-                [{{ ev.bbox_x1|floatformat:0 }}, {{ ev.bbox_y1|floatformat:0 }}, {{ ev.bbox_x2|floatformat:0 }}, {{ ev.bbox_y2|floatformat:0 }}]
-              </td>
-              <td style="padding: 10px 14px;">
-                {% if ev.snapshot_path %}
-                  <a href="{{ ev.snapshot_path }}" target="_blank" class="text-link" style="font-size: 11px;">View Image ↗</a>
-                {% else %}
-                  <span style="color: var(--outline); font-size: 11px;">—</span>
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% elif log_rows %}
-      <table class="log-table">
-        <thead>
-          <tr>
-            <th>Timestamp</th>
-            <th>Frame</th>
-            <th>Track ID</th>
-            <th>Class</th>
-            <th>Confidence</th>
-            <th>BBox (x1, y1, x2, y2)</th>
-            <th>Center (cx, cy)</th>
-            <th>Line Crossing</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in log_rows %}
-            <tr>
-              <td>{{ row.timestamp }}</td>
-              <td>{{ row.frame_number }}</td>
-              <td>
-                {% if row.track_id != "-1" %}
-                  <span style="color: var(--primary);">#{{ row.track_id }}</span>
-                {% else %}
-                  <span style="color: var(--outline);">N/A</span>
-                {% endif %}
-              </td>
-              <td>
-                <span class="class-badge class--{{ row.class|lower }}">
-                  <span class="class-dot"></span>
-                  {{ row.class }}
-                </span>
-              </td>
-              <td>{{ row.confidence }}</td>
-              <td>[{{ row.x1 }}, {{ row.y1 }}, {{ row.x2 }}, {{ row.y2 }}]</td>
-              <td>({{ row.center_x }}, {{ row.center_y }})</td>
-              <td>
-                {% if row.line_crossing_status != "none" %}
-                  <span style="color: var(--tertiary);">{{ row.line_crossing_status }}</span>
-                {% else %}
-                  <span style="color: var(--outline);">none</span>
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <div class="empty-state">
-        <span class="material-symbols-outlined" style="font-variation-settings:'wght' 100;">receipt_long</span>
-        <h2 class="empty-state__title">No Log Entries Recorded Yet</h2>
-        <p class="empty-state__body">
-          No detections have been recorded yet for {{ camera.name }}. Once the live stream detects and identifies objects, events and snapshots will appear here in real time.
-        </p>
-      </div>
+{% block nvr_content %}
+<!-- ── Top Toolbar ────────────────────────────────────────────────────────── -->
+<div class="nvr-toolbar">
+  <div class="nvr-toolbar__title">
+    <span class="material-symbols-outlined" style="color: var(--primary);">receipt_long</span>
+    <span>Detection &amp; Event Logs</span>
+    {% if camera %}
+      <span style="font-size: 13px; font-weight: 400; color: var(--outline); font-family: var(--font-mono); margin-left: 8px;">
+        [{{ camera.name }}]
+      </span>
     {% endif %}
   </div>
+
+  <div class="nvr-filter-group">
+    <!-- Camera Switcher -->
+    {% if cameras|length > 1 %}
+      <form method="get" id="log-camera-select" style="display: flex; gap: 8px;">
+        <select name="camera" class="nvr-select" onchange="window.location.href='/nvr/camera/' + this.value + '/log/';">
+          {% for cam in cameras %}
+            <option value="{{ cam.id }}" {% if camera.id == cam.id %}selected{% endif %}>
+              📹 {{ cam.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+
+    {% if camera %}
+      <a href="{% url 'nvr:camera_live' camera.id %}" class="btn btn--primary btn--sm">
+        <span class="material-symbols-outlined" style="font-size: 16px;">videocam</span>
+        <span>Live Feed</span>
+      </a>
+    {% endif %}
+    <a href="{% url 'nvr:live' %}" class="btn btn--ghost btn--sm">
+      <span class="material-symbols-outlined" style="font-size: 16px;">grid_view</span>
+      <span>Grid View</span>
+    </a>
+  </div>
+</div>
+
+{% if error %}
+  <div class="alert alert--error" style="margin-bottom: var(--space-md);">{{ error }}</div>
+{% endif %}
+
+<!-- ── Log Table Card ─────────────────────────────────────────────────────── -->
+<div class="card card--dark" style="padding: 0; overflow-x: auto; margin-bottom: var(--space-2xl);">
+  {% if log_events %}
+    <table class="log-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <thead>
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; color: var(--on-surface-variant);">
+          <th style="padding: 12px 16px;">Timestamp</th>
+          <th style="padding: 12px 16px;">Frame</th>
+          <th style="padding: 12px 16px;">Track ID</th>
+          <th style="padding: 12px 16px;">Class</th>
+          <th style="padding: 12px 16px;">Confidence</th>
+          <th style="padding: 12px 16px;">Status / Zone</th>
+          <th style="padding: 12px 16px;">Bounding Box</th>
+          <th style="padding: 12px 16px;">Snapshot Evidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in log_events %}
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="padding: 12px 16px; font-family: var(--font-mono); color: var(--outline); font-size: 11px;">
+              {{ ev.created_at|date:"Y-m-d H:i:s" }}
+            </td>
+            <td style="padding: 12px 16px; font-family: var(--font-mono); font-size: 11px;">
+              {{ ev.frame_number }}
+            </td>
+            <td style="padding: 12px 16px; font-family: var(--font-mono);">
+              {% if ev.track_id >= 0 %}
+                <span style="color: var(--primary); font-weight: 600;">#{{ ev.track_id }}</span>
+              {% else %}
+                <span style="color: var(--outline);">N/A</span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 16px;">
+              <span class="class-badge class--{{ ev.class_name|lower }}">
+                <span class="class-dot"></span>
+                {{ ev.class_name|upper }}
+              </span>
+            </td>
+            <td style="padding: 12px 16px; font-family: var(--font-mono); color: var(--primary);">
+              {{ ev.confidence|floatformat:2 }}
+            </td>
+            <td style="padding: 12px 16px;">
+              {% if "Intrusion" in ev.line_crossing_status %}
+                <span style="color: var(--error); font-weight: 600; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                  <span class="material-symbols-outlined" style="font-size: 14px;">warning</span>
+                  {{ ev.line_crossing_status }}
+                </span>
+              {% elif ev.line_crossing_status != "none" %}
+                <span style="color: var(--tertiary); font-size: 11px;">{{ ev.line_crossing_status }}</span>
+              {% else %}
+                <span style="color: var(--outline); font-size: 11px;">Standard</span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 16px; font-family: var(--font-mono); font-size: 11px; color: var(--on-surface-variant);">
+              [{{ ev.bbox_x1|floatformat:0 }}, {{ ev.bbox_y1|floatformat:0 }}, {{ ev.bbox_x2|floatformat:0 }}, {{ ev.bbox_y2|floatformat:0 }}]
+            </td>
+            <td style="padding: 12px 16px;">
+              {% if ev.snapshot_path %}
+                <a href="{{ ev.snapshot_path }}" target="_blank" class="text-link" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                  <span class="material-symbols-outlined" style="font-size: 14px;">photo</span>
+                  <span>View Proof ↗</span>
+                </a>
+              {% else %}
+                <span style="color: var(--outline); font-size: 11px;">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% elif log_rows %}
+    <table class="log-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <thead>
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; color: var(--on-surface-variant);">
+          <th style="padding: 12px 16px;">Timestamp</th>
+          <th style="padding: 12px 16px;">Frame</th>
+          <th style="padding: 12px 16px;">Track ID</th>
+          <th style="padding: 12px 16px;">Class</th>
+          <th style="padding: 12px 16px;">Confidence</th>
+          <th style="padding: 12px 16px;">BBox (x1, y1, x2, y2)</th>
+          <th style="padding: 12px 16px;">Center (cx, cy)</th>
+          <th style="padding: 12px 16px;">Line Crossing</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in log_rows %}
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="padding: 12px 16px; font-family: var(--font-mono); font-size: 11px;">{{ row.timestamp }}</td>
+            <td style="padding: 12px 16px; font-family: var(--font-mono); font-size: 11px;">{{ row.frame_number }}</td>
+            <td style="padding: 12px 16px; font-family: var(--font-mono);">
+              {% if row.track_id != "-1" %}
+                <span style="color: var(--primary);">#{{ row.track_id }}</span>
+              {% else %}
+                <span style="color: var(--outline);">N/A</span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 16px;">
+              <span class="class-badge class--{{ row.class|lower }}">
+                <span class="class-dot"></span>
+                {{ row.class }}
+              </span>
+            </td>
+            <td style="padding: 12px 16px; font-family: var(--font-mono);">{{ row.confidence }}</td>
+            <td style="padding: 12px 16px; font-family: var(--font-mono); font-size: 11px;">[{{ row.x1 }}, {{ row.y1 }}, {{ row.x2 }}, {{ row.y2 }}]</td>
+            <td style="padding: 12px 16px; font-family: var(--font-mono); font-size: 11px;">({{ row.center_x }}, {{ row.center_y }})</td>
+            <td style="padding: 12px 16px;">
+              {% if row.line_crossing_status != "none" %}
+                <span style="color: var(--tertiary);">{{ row.line_crossing_status }}</span>
+              {% else %}
+                <span style="color: var(--outline);">none</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">
+      <span class="material-symbols-outlined" style="font-variation-settings:'wght' 100;">receipt_long</span>
+      <h2 class="empty-state__title">No Log Entries Recorded Yet</h2>
+      <p class="empty-state__body">
+        No detections have been recorded yet for {{ camera.name|default:"your cameras" }}. Once the live stream detects and identifies objects, events and snapshots will appear here in real time.
+      </p>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

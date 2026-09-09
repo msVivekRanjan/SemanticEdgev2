@@ -14,9 +14,9 @@
         <span class="nvr-count-chip" style="background: rgba(109,94,245,0.15);">{{ total_matches }} results</span>
       {% endif %}
     </div>
-    <a href="{% url 'nvr:export_csv' %}" class="btn btn--ghost btn--sm" title="Download all detection logs as CSV">
-      <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
-      <span>Export CSV Logs</span>
+    <a href="{% url 'nvr:logs' %}" class="btn btn--primary btn--sm" title="View live detection and event logs">
+      <span class="material-symbols-outlined" style="font-size: 16px;">receipt_long</span>
+      <span>View Live Logs</span>
     </a>
   </div>
 

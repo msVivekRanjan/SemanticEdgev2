@@ -120,5 +120,9 @@ YOLO_MODEL_PATH = config("YOLO_MODEL_PATH", default=str(BASE_DIR / "yolov8n.pt")
 YOLO_CONF_THRESHOLD = config("YOLO_CONF_THRESHOLD", default=0.40, cast=float)
 YOLO_DEVICE = config("YOLO_DEVICE", default="cpu")
 
+# ── Telegram Bot & OpenClaw Integration ──────────────────────────────────────
+TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
+TELEGRAM_CHAT_ID = config("TELEGRAM_CHAT_ID", default="")
+
 # ── Misc ─────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

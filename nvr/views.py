@@ -41,7 +41,7 @@ from django.views.generic import TemplateView
 from accounts.models import UserServiceProfile
 from src.tracker import Tracker
 from src.draw_utils import draw_box, draw_fps
-from .models import AttendanceRecord, Camera, DetectionEvent, FaceReference, ObjectCountRecord
+from .models import AttendanceRecord, Camera, DetectionEvent, FaceReference, MonitoringZone, ObjectCountRecord
 from .streaming import (
     face_recognition_frame_generator,
     frame_generator,
@@ -49,7 +49,9 @@ from .streaming import (
     get_stats,
     object_counter_frame_generator,
     raw_frame_generator,
+    restricted_area_frame_generator,
 )
+from .openclaw import get_telegram_config, send_telegram_alert
 
 
 class CameraOwnershipMixin:
@@ -188,14 +190,16 @@ class FaceRecognitionView(LoginRequiredMixin, TemplateView):
         return redirect("nvr:face_recognition")
 
 
-# ── 3. Industrial Object Counter Module ───────────────────────────────────────
+# ── 3. Object Tracker & Restricted Area Monitoring Module ────────────────────
 
 class ObjectCounterView(LoginRequiredMixin, TemplateView):
     """
-    Industrial Object & Conveyor Production Counter for Manufacturing Plants.
+    Object Tracker & Restricted Area Monitoring Module.
+    Supports dynamic polygon & line tripwire zone editor, ByteTrack intrusion alerts,
+    and Day/Night scene threshold calibration.
     """
 
-    template_name = "nvr/object_counter.html"
+    template_name = "nvr/restricted_area.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
@@ -206,27 +210,44 @@ class ObjectCounterView(LoginRequiredMixin, TemplateView):
 
         if not has_access:
             context["service_key"] = "object_count"
-            context["service_title"] = "Industrial Object & Production Counter"
+            context["service_title"] = "Object Tracker & Restricted Area Monitoring"
             context["service_desc"] = (
-                "Real-time item tallying, conveyor belt line-crossing detection, and yield throughput rate (PPM) "
-                "reporting engineered for factory assembly lines and logistics hubs."
+                "Dynamic interactive polygon and line tripwire zone editor, ByteTrack tracking, "
+                "automated perimeter intrusion detection, and instant Telegram alert notifications."
             )
             return context
 
         user_cameras = Camera.objects.filter(owner=user, is_active=True).order_by("id")
         context["cameras"] = user_cameras
         selected_cam_id = self.request.GET.get("camera")
+        selected_camera = None
         if selected_cam_id:
             try:
-                context["selected_camera"] = user_cameras.get(pk=int(selected_cam_id))
+                selected_camera = user_cameras.get(pk=int(selected_cam_id))
             except (Camera.DoesNotExist, ValueError):
-                context["selected_camera"] = user_cameras.first()
+                selected_camera = user_cameras.first()
         else:
-            context["selected_camera"] = user_cameras.first()
+            selected_camera = user_cameras.first()
+
+        context["selected_camera"] = selected_camera
+        if selected_camera:
+            context["zones"] = MonitoringZone.objects.filter(camera=selected_camera).order_by("created_at")
+            context["night_threshold"] = selected_camera.night_threshold
+            context["intrusion_events"] = DetectionEvent.objects.filter(
+                camera=selected_camera,
+                line_crossing_status__icontains="intrusion",
+            ).order_by("-created_at")[:25]
+        else:
+            context["zones"] = []
+            context["night_threshold"] = 60.0
+            context["intrusion_events"] = []
 
         context["count_records"] = ObjectCountRecord.objects.filter(user=user).order_by("-created_at")[:30]
         context["active_tab"] = "object_counter"
         return context
+
+
+RestrictedAreaView = ObjectCounterView
 
 
 # ── 4. Review Tab (Persisted Single-Object Snapshots per User) ─────────────────
@@ -486,9 +507,17 @@ class ExportView(LoginRequiredMixin, TemplateView):
                         continue
                     seen_filenames.add(f.name)
                     size_mb = f.stat().st_size / (1024 * 1024)
+                    # Always serve from /media/exports/ — move stray output/video files there
+                    media_target = base_dir / "media" / "exports" / f.name
+                    if not media_target.exists() and f != media_target:
+                        try:
+                            import shutil
+                            shutil.copy2(str(f), str(media_target))
+                        except Exception:
+                            pass
                     export_history.append({
                         "name": f.name,
-                        "url": f"/media/exports/{f.name}" if (base_dir / "media" / "exports" / f.name).exists() else f"/media/exports/{f.name}",
+                        "url": f"/media/exports/{f.name}",
                         "filepath": str(f),
                         "camera": "Uploaded Video / Custom" if "upload" in f.name else "Primary Sensor",
                         "format": "MP4 Video (H.264 Annotated)",
@@ -559,8 +588,18 @@ class ExportView(LoginRequiredMixin, TemplateView):
             if not fps or fps < 1 or fps > 120:
                 fps = 25.0
 
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            fourcc = cv2.VideoWriter_fourcc(*"avc1")
             out_writer = cv2.VideoWriter(str(output_filepath), fourcc, fps, (width, height))
+            use_ffmpeg_fallback = not out_writer.isOpened()
+            if use_ffmpeg_fallback:
+                # avc1 not writable on this OpenCV build — write mp4v first, transcode after
+                out_writer.release()
+                temp_filepath = output_filepath.with_suffix(".tmp.mp4")
+                fourcc_fallback = cv2.VideoWriter_fourcc(*"mp4v")
+                out_writer = cv2.VideoWriter(str(temp_filepath), fourcc_fallback, fps, (width, height))
+            else:
+                use_ffmpeg_fallback = False
+                temp_filepath = None
 
             # Initialize Tracker
             model_path = getattr(settings, "YOLO_MODEL_PATH", "yolov8n.pt")
@@ -636,6 +675,33 @@ class ExportView(LoginRequiredMixin, TemplateView):
             finally:
                 cap.release()
                 out_writer.release()
+                # If avc1 was not writable, transcode the temp mp4v file to H.264 via ffmpeg
+                if use_ffmpeg_fallback and temp_filepath and temp_filepath.exists():
+                    import subprocess
+                    try:
+                        result = subprocess.run(
+                            [
+                                "ffmpeg", "-y",
+                                "-i", str(temp_filepath),
+                                "-vcodec", "libx264",
+                                "-preset", "fast",
+                                "-crf", "23",
+                                "-movflags", "+faststart",
+                                str(output_filepath),
+                            ],
+                            capture_output=True,
+                            text=True,
+                            timeout=300,
+                        )
+                        if result.returncode != 0:
+                            # Transcode failed — keep mp4v file as-is under output name
+                            import shutil
+                            shutil.move(str(temp_filepath), str(output_filepath))
+                        else:
+                            temp_filepath.unlink(missing_ok=True)
+                    except Exception:
+                        import shutil
+                        shutil.move(str(temp_filepath), str(output_filepath))
 
             if processing_mode == "video_and_logs":
                 messages.success(
@@ -710,6 +776,14 @@ class SettingsView(LoginRequiredMixin, TemplateView):
         context["yolo_conf"] = getattr(settings, "YOLO_CONF_THRESHOLD", 0.40)
         context["yolo_device"] = getattr(settings, "YOLO_DEVICE", "cpu")
         context["active_tab"] = "settings"
+
+        # Telegram alert integration status
+        from nvr.openclaw import get_telegram_config
+        tg_token, tg_chat_id = get_telegram_config()
+        masked_token = f"{tg_token[:8]}...{tg_token[-4:]}" if len(tg_token) > 12 else (tg_token or "Not configured")
+        context["telegram_bot_token_masked"] = masked_token
+        context["telegram_chat_id"] = tg_chat_id
+        context["telegram_configured"] = bool(tg_token and tg_chat_id)
         return context
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
@@ -718,18 +792,53 @@ class SettingsView(LoginRequiredMixin, TemplateView):
             name = request.POST.get("name", "New Camera")
             source = request.POST.get("source_url", "0")
             tracker = request.POST.get("tracker_enabled") == "on"
-            Camera.objects.create(
-                owner=request.user,
-                name=name,
-                source_url=source,
-                tracker_enabled=tracker,
-            )
-            messages.success(request, f"Camera '{name}' registered successfully.")
+
+            # Reuse existing camera (even if previously soft-deleted) so detection
+            # history linked via FK is preserved when the same source is re-added.
+            existing = Camera.objects.filter(owner=request.user, source_url=source).first()
+            if existing:
+                existing.name = name
+                existing.tracker_enabled = tracker
+                existing.is_active = True
+                existing.save(update_fields=["name", "tracker_enabled", "is_active", "updated_at"])
+                messages.success(request, f"Camera '{name}' re-activated. All previous detection history retained.")
+            else:
+                Camera.objects.create(
+                    owner=request.user,
+                    name=name,
+                    source_url=source,
+                    tracker_enabled=tracker,
+                )
+                messages.success(request, f"Camera '{name}' registered successfully.")
         elif action == "delete_camera":
             cam_id = request.POST.get("camera_id")
             cam = get_object_or_404(Camera, pk=cam_id, owner=request.user)
-            cam.delete()
-            messages.info(request, f"Camera '{cam.name}' deleted.")
+            # Soft-delete: mark inactive rather than destroying the row.
+            # This preserves the camera PK so all linked DetectionEvent records
+            # remain intact and will be re-linked if the same source is re-added.
+            cam.is_active = False
+            cam.save(update_fields=["is_active", "updated_at"])
+            messages.info(request, f"Camera '{cam.name}' removed. Detection history preserved.")
+        elif action == "update_telegram_chat_id":
+            new_chat_id = request.POST.get("telegram_chat_id", "").strip()
+            if new_chat_id:
+                env_file = Path(getattr(settings, "BASE_DIR", Path("."))) / ".env"
+                if env_file.is_file():
+                    try:
+                        with open(env_file, "r", encoding="utf-8") as f:
+                            lines = f.readlines()
+                        updated = False
+                        for i, line in enumerate(lines):
+                            if line.startswith("TELEGRAM_CHAT_ID="):
+                                lines[i] = f"TELEGRAM_CHAT_ID={new_chat_id}\n"
+                                updated = True
+                        if not updated:
+                            lines.append(f"\nTELEGRAM_CHAT_ID={new_chat_id}\n")
+                        with open(env_file, "w", encoding="utf-8") as f:
+                            f.writelines(lines)
+                        messages.success(request, f"Telegram Chat ID updated to '{new_chat_id}'.")
+                    except Exception as e:
+                        messages.error(request, f"Error saving .env: {e}")
         return redirect("nvr:settings")
 
 
@@ -823,34 +932,46 @@ class SystemStatusApiView(LoginRequiredMixin, View):
         })
 
 
-class DetectionLogView(LoginRequiredMixin, CameraOwnershipMixin, TemplateView):
-    """Detection log viewer."""
+class DetectionLogView(LoginRequiredMixin, TemplateView):
+    """Detection log viewer in professional NVR layout."""
 
     template_name = "nvr/log.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
-        camera = self.get_camera(self.kwargs["camera_id"])
+        user = self.request.user
+        cameras = Camera.objects.filter(owner=user, is_active=True)
+        context["cameras"] = cameras
+
+        camera_id = self.kwargs.get("camera_id") or self.request.GET.get("camera")
+        camera = None
+        if camera_id:
+            camera = get_object_or_404(Camera, pk=camera_id, owner=user)
+        elif cameras.exists():
+            camera = cameras.first()
+
         context["camera"] = camera
+        context["log_events"] = []
+        context["log_rows"] = []
 
-        events = DetectionEvent.objects.filter(camera=camera, user=self.request.user).order_by("-created_at")[:100]
-        context["log_events"] = events
+        if camera:
+            events = DetectionEvent.objects.filter(camera=camera, user=user).order_by("-created_at")[:150]
+            context["log_events"] = events
 
-        base_dir = getattr(settings, "BASE_DIR", Path(__file__).resolve().parent.parent)
-        log_path = base_dir / "output" / "logs" / f"camera_{camera.pk}_detection_log.csv"
-        rows = []
-        if log_path.exists():
-            try:
-                with open(log_path, mode="r", encoding="utf-8") as f:
-                    reader = csv.DictReader(f)
-                    all_rows = list(reader)
-                    rows = list(reversed(all_rows[-100:]))
-            except Exception as e:
-                context["error"] = f"Error reading log file: {e}"
+            base_dir = getattr(settings, "BASE_DIR", Path(__file__).resolve().parent.parent)
+            log_path = base_dir / "output" / "logs" / f"camera_{camera.pk}_detection_log.csv"
+            if log_path.exists():
+                try:
+                    with open(log_path, mode="r", encoding="utf-8") as f:
+                        reader = csv.DictReader(f)
+                        all_rows = list(reader)
+                        context["log_rows"] = list(reversed(all_rows[-100:]))
+                except Exception as e:
+                    context["error"] = f"Error reading log file: {e}"
 
-        context["log_rows"] = rows
-        context["log_path"] = str(log_path)
-        context["active_tab"] = "live"
+            context["log_path"] = str(log_path)
+
+        context["active_tab"] = "logs"
         return context
 
 
@@ -891,3 +1012,159 @@ class DeleteDetectionApiView(LoginRequiredMixin, View):
 
         event.delete()
         return JsonResponse({"status": "success", "event_id": event_id})
+
+
+# ── 11. Monitoring Zones & Threshold APIs ────────────────────────────────────
+
+class CameraZonesApiView(LoginRequiredMixin, CameraOwnershipMixin, View):
+    """API endpoint to get and save dynamic monitoring zones for a camera."""
+
+    def get(self, request: HttpRequest, camera_id: int) -> JsonResponse:
+        camera = self.get_camera(camera_id)
+        zones = MonitoringZone.objects.filter(camera=camera).order_by("created_at")
+        zone_data = [
+            {
+                "id": z.id,
+                "name": z.name,
+                "zone_type": z.zone_type,
+                "coordinates": z.coordinates or [],
+                "target_classes": z.target_classes or [],
+                "is_active": z.is_active,
+            }
+            for z in zones
+        ]
+        return JsonResponse({
+            "status": "success",
+            "camera_id": camera.id,
+            "night_threshold": camera.night_threshold,
+            "zones": zone_data,
+        })
+
+    def post(self, request: HttpRequest, camera_id: int) -> JsonResponse:
+        camera = self.get_camera(camera_id)
+        try:
+            body = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except Exception:
+            body = {}
+
+        zones_payload = body.get("zones", [])
+        saved_zones = []
+        keep_ids = []
+
+        for i, z_item in enumerate(zones_payload):
+            zone_id = z_item.get("id")
+            name = str(z_item.get("name", f"Restricted Zone {i + 1}")).strip() or f"Restricted Zone {i + 1}"
+            zone_type = z_item.get("zone_type", "polygon")
+            coordinates = z_item.get("coordinates", [])
+            target_classes = z_item.get("target_classes", [])
+            is_active = bool(z_item.get("is_active", True))
+
+            if zone_id and MonitoringZone.objects.filter(id=zone_id, camera=camera).exists():
+                zone = MonitoringZone.objects.get(id=zone_id, camera=camera)
+                zone.name = name
+                zone.zone_type = zone_type
+                zone.coordinates = coordinates
+                zone.target_classes = target_classes
+                zone.is_active = is_active
+                zone.save()
+            else:
+                zone = MonitoringZone.objects.create(
+                    camera=camera,
+                    name=name,
+                    zone_type=zone_type,
+                    coordinates=coordinates,
+                    target_classes=target_classes,
+                    is_active=is_active,
+                )
+            keep_ids.append(zone.id)
+            saved_zones.append({
+                "id": zone.id,
+                "name": zone.name,
+                "zone_type": zone.zone_type,
+                "coordinates": zone.coordinates,
+                "target_classes": zone.target_classes,
+                "is_active": zone.is_active,
+            })
+
+        # Remove deleted zones not present in current payload
+        MonitoringZone.objects.filter(camera=camera).exclude(id__in=keep_ids).delete()
+
+        return JsonResponse({
+            "status": "success",
+            "count": len(saved_zones),
+            "zones": saved_zones,
+        })
+
+
+class CameraThresholdApiView(LoginRequiredMixin, CameraOwnershipMixin, View):
+    """API endpoint to calibrate Day/Night grayscale threshold for a camera."""
+
+    def post(self, request: HttpRequest, camera_id: int) -> JsonResponse:
+        camera = self.get_camera(camera_id)
+        try:
+            body = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except Exception:
+            body = request.POST
+
+        try:
+            thresh = float(body.get("night_threshold", 60.0))
+            camera.night_threshold = max(5.0, min(250.0, thresh))
+            camera.save(update_fields=["night_threshold"])
+            return JsonResponse({"status": "success", "night_threshold": camera.night_threshold})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+class TestTelegramAlertView(LoginRequiredMixin, View):
+    """
+    Triggers a live test Telegram intrusion alert using the exact same code path
+    as real intrusion alerts (send_telegram_alert) with sync=True.
+    Returns full diagnostics: HTTP status code, Telegram JSON response, recipient chat ID.
+    """
+
+    def post(self, request: HttpRequest) -> JsonResponse:
+        from nvr.models import Camera, DetectionEvent
+
+        token, chat_id = get_telegram_config()
+        if not token:
+            return JsonResponse({
+                "success": False,
+                "error": "TELEGRAM_BOT_TOKEN is not configured in .env",
+                "chat_id": chat_id,
+                "status_code": 0,
+            }, status=400)
+
+        # Retrieve a camera or build a fallback
+        camera = Camera.objects.filter(owner=request.user).first() or Camera.objects.first()
+        if not camera:
+            camera = Camera(
+                name="Demo Perimeter Camera",
+                source_url="0",
+                owner=request.user,
+            )
+
+        # Build test intrusion event (transient instance)
+        test_event = DetectionEvent(
+            user=request.user,
+            camera=camera,
+            track_id=999,
+            class_name="person",
+            confidence=0.9876,
+            bbox_x1=50,
+            bbox_y1=50,
+            bbox_x2=200,
+            bbox_y2=350,
+            line_crossing_status="Intrusion: Main Perimeter (TEST ALERT)",
+            description="Diagnostic test alert dispatched from NVR Settings page.",
+        )
+
+        success, result = send_telegram_alert(test_event, sync=True)
+
+        return JsonResponse({
+            "success": success,
+            "status_code": result.get("status_code", 0),
+            "chat_id": result.get("chat_id", chat_id),
+            "telegram_response": result.get("response") or result.get("error"),
+            "error": result.get("error") if not success else None,
+        })
+

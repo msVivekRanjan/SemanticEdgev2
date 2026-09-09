@@ -122,5 +122,125 @@
     </div>
   </div>
 
+  <!-- 3. Telegram Alert & OpenClaw Integration -->
+  <div class="card card--dark">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="material-symbols-outlined" style="color: #29b6f6; font-size: 20px;">send</span>
+        <span style="font-size: 15px; font-weight: 700; color: var(--on-surface);">Telegram Intrusion Alert &amp; OpenClaw Integration</span>
+      </div>
+      {% if telegram_configured %}
+        <span class="badge" style="background-color: rgba(38, 198, 218, 0.15); color: #26c6da; border: 1px solid rgba(38, 198, 218, 0.3); font-size: 11px; padding: 3px 8px; border-radius: 4px;">
+          ● Configured &amp; Active
+        </span>
+      {% else %}
+        <span class="badge" style="background-color: rgba(239, 83, 80, 0.15); color: #ef5350; border: 1px solid rgba(239, 83, 80, 0.3); font-size: 11px; padding: 3px 8px; border-radius: 4px;">
+          ● Incomplete Setup
+        </span>
+      {% endif %}
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); font-size: 13px; margin-bottom: 20px;">
+      <div>
+        <label class="input-label">Telegram Bot Token</label>
+        <input type="text" class="nvr-search-input" value="{{ telegram_bot_token_masked }}" readonly style="width: 100%; font-family: var(--font-mono); color: var(--outline);" />
+        <span style="font-size: 11px; color: var(--outline); margin-top: 4px; display: block;">Configured in .env (managed via @BotFather)</span>
+      </div>
+
+      <div>
+        <label class="input-label">Target Chat / Channel ID</label>
+        <form method="post" style="display: flex; gap: 8px;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_telegram_chat_id" />
+          <input type="text" name="telegram_chat_id" class="nvr-search-input" value="{{ telegram_chat_id }}" style="flex: 1; font-family: var(--font-mono); color: var(--primary);" required />
+          <button type="submit" class="btn btn--secondary btn--sm" title="Save Chat ID to .env">Save</button>
+        </form>
+        <span style="font-size: 11px; color: var(--outline); margin-top: 4px; display: block;">Recipient User or Group ID (e.g. 1448272968)</span>
+      </div>
+    </div>
+
+    <!-- Diagnostic Test Section -->
+    <div style="padding: 16px; background-color: var(--surface-container-low); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--on-surface);">Test Telegram Alert Pipeline</div>
+          <div style="font-size: 11px; color: var(--outline); margin-top: 2px;">
+            Executes the exact same <code>send_telegram_alert()</code> pipeline used by real intrusion events to verify bot dispatch independently of RTSP cameras.
+          </div>
+        </div>
+
+        <button id="btn-test-telegram-alert" type="button" class="btn btn--primary btn--sm" style="display: flex; align-items: center; gap: 6px; background-color: #0288d1; border-color: #0288d1;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">notifications_active</span>
+          <span>Test Telegram Alert</span>
+        </button>
+      </div>
+
+      <!-- Test Output Display Panel -->
+      <div id="test-alert-result" style="display: none; margin-top: 14px; padding: 12px; border-radius: var(--radius); font-size: 12px; font-family: var(--font-mono); border: 1px solid transparent;">
+        <div id="test-alert-summary" style="font-weight: 700; margin-bottom: 6px;"></div>
+        <div id="test-alert-details" style="white-space: pre-wrap; word-break: break-all; color: var(--on-surface-variant); max-height: 200px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  </div>
+
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btn-test-telegram-alert');
+  const resultBox = document.getElementById('test-alert-result');
+  const summaryEl = document.getElementById('test-alert-summary');
+  const detailsEl = document.getElementById('test-alert-details');
+
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 16px; animation: spin 1s linear infinite;">sync</span> Sending Test Alert...`;
+    resultBox.style.display = 'block';
+    resultBox.style.backgroundColor = 'var(--surface-container-high)';
+    resultBox.style.borderColor = 'rgba(255,255,255,0.1)';
+    summaryEl.textContent = '⏳ Dispatching test intrusion alert through send_telegram_alert()...';
+    summaryEl.style.color = 'var(--primary)';
+    detailsEl.textContent = '';
+
+    try {
+      const resp = await fetch("{% url 'nvr:test_telegram_alert' %}", {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        resultBox.style.backgroundColor = 'rgba(46, 125, 50, 0.15)';
+        resultBox.style.borderColor = 'rgba(46, 125, 50, 0.4)';
+        summaryEl.innerHTML = `✅ <b>Alert Delivered Successfully!</b> (HTTP ${data.status_code}) to Chat ID: <code>${data.chat_id}</code>`;
+        summaryEl.style.color = '#81c784';
+        detailsEl.textContent = JSON.stringify(data.telegram_response, null, 2);
+      } else {
+        resultBox.style.backgroundColor = 'rgba(198, 40, 40, 0.15)';
+        resultBox.style.borderColor = 'rgba(198, 40, 40, 0.4)';
+        summaryEl.innerHTML = `❌ <b>Telegram Dispatch Failed!</b> (HTTP ${data.status_code || 'Error'})`;
+        summaryEl.style.color = '#e57373';
+        detailsEl.textContent = typeof data.error === 'object' ? JSON.stringify(data.error, null, 2) : (data.error || JSON.stringify(data.telegram_response, null, 2));
+      }
+    } catch (err) {
+      resultBox.style.backgroundColor = 'rgba(198, 40, 40, 0.15)';
+      resultBox.style.borderColor = 'rgba(198, 40, 40, 0.4)';
+      summaryEl.textContent = `❌ Network / API Execution Error`;
+      summaryEl.style.color = '#e57373';
+      detailsEl.textContent = String(err);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 16px;">notifications_active</span><span>Test Telegram Alert</span>`;
+    }
+  });
+});
+</script>
+<style>
+@keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
 {% endblock %}
