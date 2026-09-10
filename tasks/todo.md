@@ -1,70 +1,64 @@
-# Task: Transform Telegram Bot into SemanticEdge Security Assistant
+# Task: Update README, Contributing.md, and Documentation System
 
-- [x] 1. Data Models & Migrations for Telegram Authentication & Feedback <!-- id: 0 -->
-  - [x] Add `TelegramSession` model (`chat_id`, `user`, `is_authenticated`, `state`, `pending_username`, `last_intent`, `last_query`, `last_interaction`) in `nvr/models.py`.
-  - [x] Add `TelegramFeedback` model (`session`, `user`, `chat_id`, `query_text`, `intent`, `is_helpful`, `created_at`) in `nvr/models.py`.
-  - [x] Run `makemigrations` and `migrate` to apply schema changes to SQLite.
+- [x] 1. Update `README.md` with Recent Capabilities <!-- id: 0 -->
+  - [x] Add Telegram Security Assistant & OpenClaw NLP section (authentication, surveillance commands, feedback loop, poller daemon).
+  - [x] Add Perimeter Monitoring Zones & Tripwire Intrusion Alerting section.
+  - [x] Add Face Recognition Attendance & Industrial Object Counting features.
+  - [x] Add Evidence Exporting with H.264 / AVC1 web-ready transcoding & CSV exports.
+  - [x] Add Cloud & Lightweight Deployment section referencing `requirements-render.txt`.
+  - [x] Update testing commands to include `accounts`, `core`, `docs`, `nvr` (36 tests).
+  - [x] Update directory structure to show OpenClaw, Telegram session models, and new templates.
 
-- [x] 2. Telegram User Authentication Flow (`/start`, `/login`, `/logout`) <!-- id: 1 -->
-  - [x] Implement stateful session tracking per `chat_id` (`UNAUTHENTICATED`, `AWAITING_USERNAME`, `AWAITING_PASSWORD`, `AUTHENTICATED_IDLE`, `AWAITING_FEEDBACK`).
-  - [x] On `/start` or unauthenticated message: prompt for username and password interactively.
-  - [x] Support one-line `/login <username> <password>` command as well as step-by-step authentication.
-  - [x] Validate credentials against Django's `authenticate(username=..., password=...)`.
-  - [x] Support `/logout` to clear session and require re-authentication.
-  - [x] Display welcome message with user identity, role, session ID, and complete capabilities menu upon successful login.
+- [x] 2. Update `CONTRIBUTING.md` <!-- id: 1 -->
+  - [x] Update architectural invariants (Telegram Security Assistant, CCTV zero-emoji standard, zone geometry, camera soft-delete reuse).
+  - [x] Update development dependencies and test commands (`python manage.py test accounts core docs nvr`).
+  - [x] Add guidelines for adding new DocPages, NLP intents, and edge AI services.
 
-- [x] 3. Expanded Natural Language Intelligence & Query Execution in `nvr/openclaw.py` <!-- id: 2 -->
-  - [x] Expand `OpenClawNLPEngine` with regex & semantic matching for:
-    - `latest_intrusion` (most recent perimeter breach)
-    - `alerts_by_filter` (date filter: today/yesterday/YYYY-MM-DD, camera name/ID filter)
-    - `evidence_search` (by Track ID or Event ID)
-    - `camera_status` (active cameras, online/offline, scene mode, last detection)
-    - `system_status` (server health, CPU, RAM, disk storage, media directory usage)
-    - `detection_statistics` (today's counts, object class breakdown, intrusion vs normal)
-    - `monitoring_zones` (configured zones, tripwires, polygon vs line, target classes)
-    - `export_requests` (recent video exports, export status, download links)
-    - `feedback` (YES / NO response parsing)
-    - `help` / `status` / `logout`
-  - [x] Redesign fallback for unsupported queries: provide a helpful structured response suggesting specific security queries rather than "I do not process general conversation".
+- [x] 3. Update Existing Documentation Pages in `docs/` and `seed_demo.py` <!-- id: 2 -->
+  - [x] Update `getting-started`: include all NVR tabs, Telegram bot daemon, credentials, and startup flow.
+  - [x] Update `supported-classes`: document standard 6 COCO classes, face references, and custom zone class filtering.
+  - [x] Update `camera-configuration`: document RTSP, camera soft-delete reuse, day/night thresholding, and multi-camera grid.
 
-- [x] 4. Professional Surveillance Report Redesign (No Emojis) <!-- id: 3 -->
-  - [x] Redesign all response templates into clean, uppercase, fixed-width CCTV surveillance report format.
-  - [x] Remove all emojis from alert messages, snapshot captions, and text responses.
-  - [x] Format tables and key-value sections with clean ASCII separators (`----------------------------------------`).
+- [x] 4. Create New Documentation Pages for `docs/` App & Seed to Database <!-- id: 3 -->
+  - [x] `telegram-security-assistant`: Bot setup, authentication flow, NLP query syntax, feedback system, daemon runner.
+  - [x] `monitoring-zones-intrusion`: Polygon restricted zones, tripwire line crossing, coordinate normalization, instant alerts.
+  - [x] `face-recognition-attendance`: FaceReference profile enrollment, live matching, attendance audit logs.
+  - [x] `object-counter-industrial`: Bidirectional line counting, conveyor item counting, rate-per-minute metrics.
+  - [x] `evidence-export-transcoding`: Video clipping, H.264/AVC1 browser transcoding, snapshot archive, CSV export.
+  - [x] `lightweight-cloud-deployment`: Render/PaaS hosting using `requirements-render.txt`, WhiteNoise, Gunicorn.
+  - [x] Update `seed_demo.py` with the complete documentation catalogue and execute database update.
 
-- [x] 5. Feedback Collection Loop <!-- id: 4 -->
-  - [x] Prompt user for feedback after serving any surveillance query: `"Was this information helpful? (Reply YES or NO)"`.
-  - [x] Parse YES/NO responses when session is in `AWAITING_FEEDBACK` state.
-  - [x] Record feedback into `TelegramFeedback` database table with user, intent, query text, and timestamp.
-  - [x] Acknowledge feedback with confirmation message and return to `AUTHENTICATED_IDLE`.
-
-- [x] 6. End-to-End Testing & Verification <!-- id: 5 -->
-  - [x] Unit tests in `nvr/tests.py` covering:
-    - Authentication flow (unauthenticated denial, correct login, bad password, logout)
-    - All expanded intents (latest intrusion, alerts by date/camera, evidence by track/event ID, camera status, system status, stats, zones, exports)
-    - Helpful unsupported query response
-    - Feedback recording in database
-    - Strict emoji-free format verification
-  - [x] Run full test suite (`python manage.py test accounts core docs nvr`) to verify 100% pass rate (36/36 tests passed).
+- [x] 5. Testing & Verification <!-- id: 4 -->
+  - [x] Run full test suite (`python manage.py test accounts core docs nvr`) to ensure all 36+ tests pass cleanly.
+  - [x] Verify docs list and detail views render correctly with syntax highlighting, TOC, and navigation.
 
 ## Review & Verification Summary
 
-1. **Authentication Flow**:
-   - `TelegramSession` tracks session state per chat ID (`IDLE`, `AWAITING_USERNAME`, `AWAITING_PASSWORD`, `AUTHENTICATED_IDLE`, `AWAITING_FEEDBACK`).
-   - Interactive prompt asks for username, validates it exists in Django `auth_user`, asks for password, and authenticates via `django.contrib.auth.authenticate`.
-   - Single-line `/login <username> <password>` and `/logout` supported.
-   - Unauthenticated users cannot access surveillance data.
+1. **`README.md` Overhaul**:
+   - Added Telegram Security Assistant & OpenClaw section with authentication flow, surveillance query syntax, and feedback loop.
+   - Added Perimeter Monitoring Zones & Intrusion Detection section.
+   - Added Face Recognition Attendance & Industrial Object Counter sections.
+   - Added Evidence Exporter with browser-compatible H.264 / AVC1 transcoding and CSV export.
+   - Added Cloud & Lightweight Deployment section referencing `requirements-render.txt` with Render build/start commands.
+   - Updated test commands to `python manage.py test accounts core docs nvr` (36 tests passing).
+   - Updated directory tree with all models, templates, and management commands.
 
-2. **Assistant Intelligence & Expanded Queries**:
-   - Extended `OpenClawNLPEngine` to support: `latest_intrusion`, `alerts_filter`, `track_id`, `event_id`, `camera_status`, `system_status`, `detection_statistics`, `monitoring_zones`, `export_requests`, `feedback`, `help`, `logout`.
-   - General conversation receives a helpful surveillance recommendation menu instead of a rejection message.
+2. **`CONTRIBUTING.md` Overhaul**:
+   - Added architectural invariants for Telegram integration (backend NLP only, auth validation, zero emojis, feedback logging).
+   - Added invariants for normalized zone coordinates (`0.0 - 1.0`) and camera soft-delete reuse.
+   - Added DocPage authoring standards and guidelines for edge AI modules.
+   - Updated setup steps to include both full edge AI (`requirements.txt`) and lightweight web (`requirements-render.txt`).
 
-3. **Professional CCTV Format (Zero Emojis)**:
-   - All response strings and alerts redesigned with clean ASCII banners (`----------------------------------------`), standardized key-value formatting, and zero emojis.
+3. **Documentation Catalogue (9 Pages in SQLite & `seed_demo.py`)**:
+   - `getting-started`: Quick Start guide with all 8 navigation tabs, daemon runner, and credentials.
+   - `supported-classes`: 6 COCO security classes + Face Reference biometric profile.
+   - `camera-configuration`: RTSP sources, soft-delete reuse, day/night thresholding, focus vs grid.
+   - `telegram-security-assistant`: Bot token configuration, auth state machine, operational NLP queries, feedback loop.
+   - `monitoring-zones-intrusion`: Polygon restricted zones, tripwires, coordinate normalization, automated alert trigger.
+   - `face-recognition-attendance`: Reference profile enrollment, matching pipeline, attendance records.
+   - `object-counter-industrial`: Bidirectional line counting, conveyor throughput, rate-per-minute metrics.
+   - `evidence-export-transcoding`: Video clipping, H.264/AVC1 encoding, FastStart atom, CSV logs.
+   - `lightweight-cloud-deployment`: Render/PaaS deployment with `requirements-render.txt`, WhiteNoise, Gunicorn.
 
-4. **Feedback Loop**:
-   - Every completed operational request prompts `"Was this information helpful? (Reply YES or NO)"`.
-   - YES/NO responses create a `TelegramFeedback` record in SQLite and transition session back to `AUTHENTICATED_IDLE`.
-
-5. **Test Results**:
-   - `python manage.py test accounts core docs nvr`: 36/36 tests passing in 9.33s.
+4. **Testing Status**:
+   - `python manage.py test accounts core docs nvr`: 36/36 tests passed in 8.925s.
