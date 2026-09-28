@@ -14,10 +14,17 @@
         <span class="nvr-count-chip" style="background: rgba(109,94,245,0.15);">{{ total_matches }} results</span>
       {% endif %}
     </div>
-    <a href="{% url 'nvr:logs' %}" class="btn btn--primary btn--sm" title="View live detection and event logs">
-      <span class="material-symbols-outlined" style="font-size: 16px;">receipt_long</span>
-      <span>View Live Logs</span>
-    </a>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button id="btn-toggle-assistant" type="button" class="btn btn--secondary btn--sm" style="display: flex; align-items: center; gap: 6px; background: rgba(109,94,245,0.18); border: 1px solid var(--primary); color: #fff;">
+        <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">smart_toy</span>
+        <span>Security Assistant</span>
+        <span id="assistant-badge" class="badge" style="background: var(--primary); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px;">Ready</span>
+      </button>
+      <a href="{% url 'nvr:logs' %}" class="btn btn--ghost btn--sm" title="View live detection and event logs">
+        <span class="material-symbols-outlined" style="font-size: 16px;">receipt_long</span>
+        <span>View Live Logs</span>
+      </a>
+    </div>
   </div>
 
   <!-- Advanced Multi-Parameter Search Form -->
@@ -188,6 +195,29 @@
                   "{{ item.description|truncatechars:40 }}"
                 </p>
               {% endif %}
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
+                <a href="{% url 'nvr:review' %}?class={{ item.class }}&track_id={{ item.track_id }}&event_id={{ item.id }}"
+                   class="text-link text-link--muted"
+                   style="font-size: 10px; display: flex; align-items: center; gap: 2px;"
+                   onclick="event.stopPropagation();"
+                   title="View in Review timeline">
+                  <span>Review</span>
+                  <span class="material-symbols-outlined" style="font-size: 11px;">arrow_forward</span>
+                </a>
+                <button type="button"
+                        class="btn btn--ghost btn--sm"
+                        style="font-size: 10px; padding: 2px 6px; height: 20px; color: var(--primary);"
+                        onclick="event.stopPropagation(); openAssistantForCard(this);"
+                        data-event-id="{{ item.id }}"
+                        data-class="{{ item.class }}"
+                        data-track="{{ item.track_id }}"
+                        data-camera="{{ item.camera_name }}"
+                        title="Start assistant investigation">
+                  <span class="material-symbols-outlined" style="font-size: 12px;">smart_toy</span>
+                  <span>Investigate</span>
+                </button>
+              </div>
             </div>
           </div>
         {% endfor %}
@@ -207,4 +237,485 @@
     </div>
   {% endif %}
 </div>
+
+<!-- ── 5. Internal SemanticEdge Assistant Chat Workspace (Dockable Drawer) ── -->
+<aside id="nvr-assistant-drawer" class="assistant-drawer" aria-hidden="true" style="position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 95vw; background: rgba(15, 15, 22, 0.96); backdrop-filter: blur(20px); border-left: 1px solid rgba(255, 255, 255, 0.1); z-index: 1050; display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: -12px 0 32px rgba(0,0,0,0.6);">
+
+  <!-- Drawer Header -->
+  <div style="padding: 14px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: var(--surface-container-low); display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(109, 94, 245, 0.2); border: 1px solid rgba(109, 94, 245, 0.4); display: flex; align-items: center; justify-content: center;">
+        <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">smart_toy</span>
+      </div>
+      <div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--on-surface);">Security Assistant</div>
+        <div id="drawer-subtitle" style="font-size: 10px; color: var(--outline); font-family: var(--font-mono);">SemanticEdge NVR Intelligence</div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <button id="btn-new-conversation" type="button" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 3px 8px; height: 26px;" title="Start New Conversation">
+        <span class="material-symbols-outlined" style="font-size: 14px;">add</span>
+        <span>New</span>
+      </button>
+      <button id="btn-close-assistant" type="button" style="background: none; border: none; color: var(--outline); cursor: pointer; display: flex; align-items: center;" aria-label="Close assistant">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Thread Switcher Bar -->
+  <div style="padding: 8px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px;">
+    <span style="font-size: 10px; color: var(--outline); white-space: nowrap;">Thread:</span>
+    <select id="assistant-thread-select" class="nvr-select" style="font-size: 11px; padding: 2px 8px; flex: 1; height: 24px;">
+      <option value="">Current Investigation</option>
+    </select>
+  </div>
+
+  <!-- Active Context Badge Bar -->
+  <div id="assistant-active-context-bar" style="display: none; padding: 8px 16px; background: rgba(109, 94, 245, 0.12); border-bottom: 1px solid rgba(109, 94, 245, 0.25); align-items: center; justify-content: space-between; gap: 8px;">
+    <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+      <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">target</span>
+      <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+        <span id="active-context-title" style="font-size: 11px; font-weight: 600; color: #fff;">Focusing on Alert #12</span>
+        <span id="active-context-meta" style="font-size: 10px; color: var(--outline); font-family: var(--font-mono); margin-left: 4px;"></span>
+      </div>
+    </div>
+    <button id="btn-clear-context" type="button" class="btn btn--ghost btn--sm" style="font-size: 10px; padding: 1px 6px; height: 20px; color: var(--outline);" title="Switch to General NVR Mode">
+      Clear
+    </button>
+  </div>
+
+  <!-- Messages Scroll Area -->
+  <div id="assistant-messages-container" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+    <!-- Messages injected dynamically -->
+  </div>
+
+  <!-- Quick Prompts Toolbar -->
+  <div style="padding: 6px 12px; border-top: 1px solid rgba(255, 255, 255, 0.06); background: rgba(0,0,0,0.15); display: flex; gap: 6px; overflow-x: auto; white-space: nowrap;">
+    <button type="button" class="quick-prompt-chip" data-prompt="show latest image">📷 Snapshot</button>
+    <button type="button" class="quick-prompt-chip" data-prompt="track history">🎯 Track History</button>
+    <button type="button" class="quick-prompt-chip" data-prompt="related detections">🔗 Related</button>
+    <button type="button" class="quick-prompt-chip" data-prompt="camera status">📹 Cameras</button>
+    <button type="button" class="quick-prompt-chip" data-prompt="latest intrusion">🚨 Intrusion</button>
+    <button type="button" class="quick-prompt-chip" data-prompt="system status">📊 Telemetry</button>
+  </div>
+
+  <!-- Input Form -->
+  <form id="assistant-chat-form" style="padding: 12px 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); background: var(--surface-container-low); display: flex; gap: 8px; align-items: center;">
+    <input
+      type="text"
+      id="assistant-chat-input"
+      class="nvr-search-input"
+      placeholder="Ask about this alert, target, or cameras..."
+      style="flex: 1; font-size: 12px; padding: 8px 12px;"
+      autocomplete="off"
+    />
+    <button type="submit" id="assistant-chat-submit" class="btn btn--primary btn--sm" style="height: 34px; padding: 0 12px;">
+      <span class="material-symbols-outlined" style="font-size: 16px;">send</span>
+    </button>
+  </form>
+
+</aside>
+
+<style>
+.assistant-drawer.is-open {
+  transform: translateX(0) !important;
+}
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 90%;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.chat-msg--user {
+  align-self: flex-end;
+  background: var(--primary);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 12px 12px 2px 12px;
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(109, 94, 245, 0.25);
+}
+
+.chat-msg--assistant {
+  align-self: flex-start;
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 14px;
+  border-radius: 12px 12px 12px 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.chat-msg--system {
+  align-self: center;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--outline);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  text-align: center;
+  max-width: 95%;
+}
+
+.chat-evidence-card {
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+}
+
+.quick-prompt-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--on-surface-variant);
+  border-radius: 14px;
+  padding: 3px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.quick-prompt-chip:hover {
+  background: rgba(109, 94, 245, 0.2);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const drawer = document.getElementById('nvr-assistant-drawer');
+  const btnToggle = document.getElementById('btn-toggle-assistant');
+  const btnClose = document.getElementById('btn-close-assistant');
+  const btnNewConv = document.getElementById('btn-new-conversation');
+  const threadSelect = document.getElementById('assistant-thread-select');
+  const contextBar = document.getElementById('assistant-active-context-bar');
+  const contextTitle = document.getElementById('active-context-title');
+  const contextMeta = document.getElementById('active-context-meta');
+  const btnClearContext = document.getElementById('btn-clear-context');
+  const messagesContainer = document.getElementById('assistant-messages-container');
+  const chatForm = document.getElementById('assistant-chat-form');
+  const chatInput = document.getElementById('assistant-chat-input');
+  const chatSubmit = document.getElementById('assistant-chat-submit');
+
+  let currentConversationId = null;
+  let currentActiveEventId = null;
+
+  // Toggle Drawer
+  function toggleDrawer(open) {
+    const shouldOpen = open !== undefined ? open : !drawer.classList.contains('is-open');
+    if (shouldOpen) {
+      drawer.classList.add('is-open');
+      drawer.setAttribute('aria-hidden', 'false');
+      chatInput.focus();
+    } else {
+      drawer.classList.remove('is-open');
+      drawer.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  if (btnToggle) btnToggle.addEventListener('click', () => toggleDrawer());
+  if (btnClose) btnClose.addEventListener('click', () => toggleDrawer(false));
+
+  // Render a single message
+  function renderMessage(msg) {
+    const el = document.createElement('div');
+    el.className = `chat-msg chat-msg--${msg.sender}`;
+
+    if (msg.sender === 'user') {
+      el.textContent = msg.content;
+    } else if (msg.sender === 'system') {
+      el.innerHTML = msg.content.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+    } else {
+      // Assistant message
+      const textDiv = document.createElement('div');
+      textDiv.style.whiteSpace = 'pre-wrap';
+      textDiv.textContent = msg.content;
+      el.appendChild(textDiv);
+
+      // Render evidence if present
+      const ev = msg.evidence || {};
+      if (ev.snapshot_url) {
+        const card = document.createElement('div');
+        card.className = 'chat-evidence-card';
+        card.innerHTML = `
+          <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden;">
+            <img src="${ev.snapshot_url}" alt="Evidence Snapshot" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.parentElement.style.display='none';" />
+            <div style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-family: var(--font-mono); color: var(--primary);">
+              Event #${ev.event_id || ''}
+            </div>
+          </div>
+          <div style="padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; background: var(--surface-container-low);">
+            <span style="font-size: 10px; color: var(--outline); font-family: var(--font-mono);">${ev.camera_name || ''}</span>
+            <a href="/nvr/review/?class=${encodeURIComponent(ev.class_name || '')}&track_id=${encodeURIComponent(ev.track_id || '')}&event_id=${encodeURIComponent(ev.event_id || '')}"
+               class="btn btn--secondary btn--sm" style="font-size: 10px; padding: 2px 6px; height: 20px;">
+              <span>Inspect in Review &rarr;</span>
+            </a>
+          </div>
+        `;
+        el.appendChild(card);
+      }
+
+      // Render suggested actions
+      if (Array.isArray(ev.suggested_actions) && ev.suggested_actions.length > 0) {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.style.display = 'flex';
+        actionsDiv.style.gap = '6px';
+        actionsDiv.style.marginTop = '8px';
+        ev.suggested_actions.forEach(act => {
+          if (act.action === 'navigate_review') {
+            const p = new URLSearchParams(act.params || {}).toString();
+            const btn = document.createElement('a');
+            btn.href = `/nvr/review/?${p}`;
+            btn.className = 'btn btn--secondary btn--sm';
+            btn.style.fontSize = '10px';
+            btn.style.padding = '2px 8px';
+            btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 12px;">manage_search</span> ${act.label}`;
+            actionsDiv.appendChild(btn);
+          }
+        });
+        el.appendChild(actionsDiv);
+      }
+    }
+
+    messagesContainer.appendChild(el);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+
+  // Load conversation details
+  async function loadConversation(convId) {
+    try {
+      const res = await fetch(`/nvr/api/assistant/conversations/${convId}/`);
+      const data = await res.json();
+      if (!data.success) return;
+
+      currentConversationId = data.conversation.id;
+      messagesContainer.innerHTML = '';
+
+      const ctx = data.conversation.context || {};
+      if (ctx.event_id) {
+        currentActiveEventId = ctx.event_id;
+        contextBar.style.display = 'flex';
+        contextTitle.textContent = `${(ctx.class_name || 'Object').toUpperCase()} #${ctx.track_id || '?'}`;
+        contextMeta.textContent = `on ${ctx.camera_name || 'Camera'} (${ctx.status || ''})`;
+      } else {
+        contextBar.style.display = 'none';
+      }
+
+      (data.conversation.messages || []).forEach(renderMessage);
+      loadThreadsList();
+    } catch (err) {
+      console.error('Error loading conversation:', err);
+    }
+  }
+
+  // Load or create conversation for an event
+  async function startConversationForEvent(eventId) {
+    try {
+      toggleDrawer(true);
+      const res = await fetch('/nvr/api/assistant/conversations/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({ event_id: eventId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        currentConversationId = data.conversation.id;
+        currentActiveEventId = eventId;
+        contextBar.style.display = 'flex';
+        const ctx = data.conversation.context || {};
+        contextTitle.textContent = `${(ctx.class_name || 'Object').toUpperCase()} #${ctx.track_id || '?'}`;
+        contextMeta.textContent = `on ${ctx.camera_name || 'Camera'} (${ctx.status || ''})`;
+
+        messagesContainer.innerHTML = '';
+        (data.conversation.messages || []).forEach(renderMessage);
+        loadThreadsList();
+      }
+    } catch (err) {
+      console.error('Error starting conversation for event:', err);
+    }
+  }
+
+  // Load threads list for dropdown
+  async function loadThreadsList() {
+    try {
+      const res = await fetch('/nvr/api/assistant/conversations/');
+      const data = await res.json();
+      if (!data.success) return;
+
+      threadSelect.innerHTML = '';
+      (data.conversations || []).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = `${c.title} (${c.updated_at.slice(5, 16)})`;
+        if (c.id === currentConversationId) opt.selected = true;
+        threadSelect.appendChild(opt);
+      });
+    } catch (err) {
+      console.error('Error loading threads:', err);
+    }
+  }
+
+  threadSelect.addEventListener('change', (e) => {
+    if (e.target.value) {
+      loadConversation(e.target.value);
+    }
+  });
+
+  if (btnNewConv) {
+    btnNewConv.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/nvr/api/assistant/conversations/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}',
+          },
+          body: JSON.stringify({ title: 'General Investigation' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentConversationId = data.conversation.id;
+          currentActiveEventId = null;
+          contextBar.style.display = 'none';
+          messagesContainer.innerHTML = '';
+          (data.conversation.messages || []).forEach(renderMessage);
+          loadThreadsList();
+        }
+      } catch (err) {
+        console.error('Error creating new conversation:', err);
+      }
+    });
+  }
+
+  if (btnClearContext) {
+    btnClearContext.addEventListener('click', () => {
+      currentActiveEventId = null;
+      contextBar.style.display = 'none';
+      renderMessage({
+        sender: 'system',
+        content: 'Switched to **General Surveillance Context**. Controlled tools will now query across all active cameras.',
+      });
+    });
+  }
+
+  // Handle message sending
+  chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    if (!currentConversationId) {
+      // Auto-create conversation first
+      const res = await fetch('/nvr/api/assistant/conversations/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ event_id: currentActiveEventId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        currentConversationId = data.conversation.id;
+      } else {
+        return;
+      }
+    }
+
+    renderMessage({ sender: 'user', content: text });
+    chatInput.value = '';
+    chatSubmit.disabled = true;
+
+    // Loading indicator
+    const loadingEl = document.createElement('div');
+    loadingEl.className = 'chat-msg chat-msg--assistant';
+    loadingEl.id = 'assistant-loading-msg';
+    loadingEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 14px; animation: spin 1s linear infinite;">sync</span> Querying controlled NVR tools...`;
+    messagesContainer.appendChild(loadingEl);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    try {
+      const res = await fetch(`/nvr/api/assistant/conversations/${currentConversationId}/messages/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      const loadMsg = document.getElementById('assistant-loading-msg');
+      if (loadMsg) loadMsg.remove();
+
+      if (data.success && data.assistant_message) {
+        renderMessage(data.assistant_message);
+      } else {
+        renderMessage({ sender: 'assistant', content: `Error: ${data.error || 'Unable to execute query.'}` });
+      }
+    } catch (err) {
+      const loadMsg = document.getElementById('assistant-loading-msg');
+      if (loadMsg) loadMsg.remove();
+      renderMessage({ sender: 'assistant', content: `Network or Server Error: ${err}` });
+    } finally {
+      chatSubmit.disabled = false;
+    }
+  });
+
+  // Quick Prompt Chips
+  document.querySelectorAll('.quick-prompt-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chatInput.value = chip.dataset.prompt;
+      chatForm.dispatchEvent(new Event('submit'));
+    });
+  });
+
+  // Global card investigate hook
+  window.openAssistantForCard = function(el) {
+    const eventId = el.getAttribute('data-event-id');
+    if (eventId) {
+      startConversationForEvent(parseInt(eventId, 10));
+    }
+  };
+
+  window.openAssistantForEvent = function(eventId, data) {
+    if (eventId) {
+      startConversationForEvent(parseInt(eventId, 10));
+    }
+  };
+
+  // Check URL params for auto-open (e.g. from Review "?event_id=12&investigate=1")
+  const urlParams = new URLSearchParams(window.location.search);
+  const paramEventId = urlParams.get('event_id');
+  const paramInvestigate = urlParams.get('investigate');
+  if (paramEventId && paramInvestigate) {
+    startConversationForEvent(parseInt(paramEventId, 10));
+  } else {
+    // Preload latest conversation if available
+    fetch('/nvr/api/assistant/conversations/')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.conversations && d.conversations.length > 0) {
+          currentConversationId = d.conversations[0].id;
+          loadConversation(currentConversationId);
+        }
+      })
+      .catch(() => {});
+  }
+});
+</script>
+<style>
+@keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
 {% endblock %}
+

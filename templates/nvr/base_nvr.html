@@ -297,7 +297,7 @@
 
       <!-- Modal Actions Footer -->
       <div
-        style="padding: 12px 20px; background-color: var(--surface-container-low); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.08);">
+        style="padding: 12px 20px; background-color: var(--surface-container-low); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap; gap: 8px;">
         <div>
           <button id="modal-delete-btn" class="btn btn--ghost btn--sm"
             style="color: var(--error); border-color: rgba(255, 80, 80, 0.3);">
@@ -306,7 +306,15 @@
           </button>
         </div>
 
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <a id="modal-review-btn" href="#" class="btn btn--ghost btn--sm" title="Inspect related track and timeline in Review">
+            <span class="material-symbols-outlined" style="font-size: 16px;">manage_search</span>
+            <span>Inspect in Review</span>
+          </a>
+          <button id="modal-investigate-btn" type="button" class="btn btn--secondary btn--sm" style="background: rgba(109,94,245,0.15); border: 1px solid var(--primary); color: #fff;">
+            <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">smart_toy</span>
+            <span>Investigate with Assistant</span>
+          </button>
           <a id="modal-download-btn" href="#" download class="btn btn--ghost btn--sm" title="Download image evidence">
             <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
             <span>Download Image</span>

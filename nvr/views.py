@@ -51,7 +51,7 @@ from .streaming import (
     raw_frame_generator,
     restricted_area_frame_generator,
 )
-from .openclaw import get_telegram_config, send_telegram_alert
+from .assistant.service import AssistantService
 
 
 class CameraOwnershipMixin:
@@ -269,12 +269,18 @@ class ReviewView(LoginRequiredMixin, TemplateView):
         camera_filter = self.request.GET.get("camera")
         class_filter = self.request.GET.get("class")
         time_filter = self.request.GET.get("time", "24h")
+        track_id_filter = self.request.GET.get("track_id")
+        event_id_filter = self.request.GET.get("event_id")
 
         qs = DetectionEvent.objects.filter(user=user).select_related("camera")
         if camera_filter and camera_filter != "all":
             qs = qs.filter(camera_id=camera_filter)
         if class_filter and class_filter != "all":
             qs = qs.filter(class_name__iexact=class_filter)
+        if track_id_filter:
+            qs = qs.filter(track_id=track_id_filter)
+        if event_id_filter:
+            qs = qs.filter(id=event_id_filter)
 
         db_events = qs.order_by("-created_at")[:120]
         events = []
@@ -335,6 +341,8 @@ class ReviewView(LoginRequiredMixin, TemplateView):
         context["selected_camera"] = camera_filter or "all"
         context["selected_class"] = class_filter or "all"
         context["selected_time"] = time_filter
+        context["selected_track_id"] = track_id_filter or ""
+        context["selected_event_id"] = event_id_filter or ""
         context["active_tab"] = "review"
         return context
 
@@ -777,13 +785,9 @@ class SettingsView(LoginRequiredMixin, TemplateView):
         context["yolo_device"] = getattr(settings, "YOLO_DEVICE", "cpu")
         context["active_tab"] = "settings"
 
-        # Telegram alert integration status
-        from nvr.openclaw import get_telegram_config
-        tg_token, tg_chat_id = get_telegram_config()
-        masked_token = f"{tg_token[:8]}...{tg_token[-4:]}" if len(tg_token) > 12 else (tg_token or "Not configured")
-        context["telegram_bot_token_masked"] = masked_token
-        context["telegram_chat_id"] = tg_chat_id
-        context["telegram_configured"] = bool(tg_token and tg_chat_id)
+        # SemanticEdge Internal Assistant diagnostics
+        assistant_svc = AssistantService()
+        context["assistant_diagnostics"] = assistant_svc.get_status_diagnostics(user)
         return context
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
@@ -819,26 +823,6 @@ class SettingsView(LoginRequiredMixin, TemplateView):
             cam.is_active = False
             cam.save(update_fields=["is_active", "updated_at"])
             messages.info(request, f"Camera '{cam.name}' removed. Detection history preserved.")
-        elif action == "update_telegram_chat_id":
-            new_chat_id = request.POST.get("telegram_chat_id", "").strip()
-            if new_chat_id:
-                env_file = Path(getattr(settings, "BASE_DIR", Path("."))) / ".env"
-                if env_file.is_file():
-                    try:
-                        with open(env_file, "r", encoding="utf-8") as f:
-                            lines = f.readlines()
-                        updated = False
-                        for i, line in enumerate(lines):
-                            if line.startswith("TELEGRAM_CHAT_ID="):
-                                lines[i] = f"TELEGRAM_CHAT_ID={new_chat_id}\n"
-                                updated = True
-                        if not updated:
-                            lines.append(f"\nTELEGRAM_CHAT_ID={new_chat_id}\n")
-                        with open(env_file, "w", encoding="utf-8") as f:
-                            f.writelines(lines)
-                        messages.success(request, f"Telegram Chat ID updated to '{new_chat_id}'.")
-                    except Exception as e:
-                        messages.error(request, f"Error saving .env: {e}")
         return redirect("nvr:settings")
 
 
@@ -1115,56 +1099,163 @@ class CameraThresholdApiView(LoginRequiredMixin, CameraOwnershipMixin, View):
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
-class TestTelegramAlertView(LoginRequiredMixin, View):
+class AssistantConversationApiView(LoginRequiredMixin, View):
     """
-    Triggers a live test Telegram intrusion alert using the exact same code path
-    as real intrusion alerts (send_telegram_alert) with sync=True.
-    Returns full diagnostics: HTTP status code, Telegram JSON response, recipient chat ID.
+    List user conversations or create/get a conversation for a specific alert/event.
     """
+
+    def get(self, request: HttpRequest) -> JsonResponse:
+        service = AssistantService()
+        event_id = request.GET.get("event_id")
+        if event_id:
+            try:
+                event_id_int = int(event_id)
+                conv = service.get_or_create_conversation(request.user, event_id=event_id_int)
+                messages = [
+                    {
+                        "id": m.id,
+                        "sender": m.sender,
+                        "content": m.content,
+                        "evidence": m.evidence,
+                        "created_at": m.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                    for m in conv.messages.all()
+                ]
+                return JsonResponse({
+                    "success": True,
+                    "conversation": {
+                        "id": conv.id,
+                        "title": conv.title,
+                        "context": conv.get_context_summary(),
+                        "messages": messages,
+                    }
+                })
+            except Exception as e:
+                return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+        conversations = service.list_conversations(request.user)
+        items = []
+        for c in conversations:
+            last_msg = c.messages.last()
+            items.append({
+                "id": c.id,
+                "title": c.title,
+                "event_id": c.event_id,
+                "camera_name": c.camera.name if c.camera else (c.event.camera.name if c.event else None),
+                "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "last_message": last_msg.content[:80] if last_msg else "",
+            })
+        return JsonResponse({"success": True, "conversations": items})
 
     def post(self, request: HttpRequest) -> JsonResponse:
-        from nvr.models import Camera, DetectionEvent
+        try:
+            data = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except Exception:
+            data = request.POST.dict()
 
-        token, chat_id = get_telegram_config()
-        if not token:
-            return JsonResponse({
-                "success": False,
-                "error": "TELEGRAM_BOT_TOKEN is not configured in .env",
-                "chat_id": chat_id,
-                "status_code": 0,
-            }, status=400)
+        event_id = data.get("event_id")
+        camera_id = data.get("camera_id")
+        title = data.get("title")
 
-        # Retrieve a camera or build a fallback
-        camera = Camera.objects.filter(owner=request.user).first() or Camera.objects.first()
-        if not camera:
-            camera = Camera(
-                name="Demo Perimeter Camera",
-                source_url="0",
-                owner=request.user,
-            )
-
-        # Build test intrusion event (transient instance)
-        test_event = DetectionEvent(
-            user=request.user,
-            camera=camera,
-            track_id=999,
-            class_name="person",
-            confidence=0.9876,
-            bbox_x1=50,
-            bbox_y1=50,
-            bbox_x2=200,
-            bbox_y2=350,
-            line_crossing_status="Intrusion: Main Perimeter (TEST ALERT)",
-            description="Diagnostic test alert dispatched from NVR Settings page.",
+        service = AssistantService()
+        conv = service.get_or_create_conversation(
+            request.user,
+            event_id=int(event_id) if event_id else None,
+            camera_id=int(camera_id) if camera_id else None,
+            title=title,
         )
 
-        success, result = send_telegram_alert(test_event, sync=True)
+        messages = [
+            {
+                "id": m.id,
+                "sender": m.sender,
+                "content": m.content,
+                "evidence": m.evidence,
+                "created_at": m.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            for m in conv.messages.all()
+        ]
 
         return JsonResponse({
-            "success": success,
-            "status_code": result.get("status_code", 0),
-            "chat_id": result.get("chat_id", chat_id),
-            "telegram_response": result.get("response") or result.get("error"),
-            "error": result.get("error") if not success else None,
+            "success": True,
+            "conversation": {
+                "id": conv.id,
+                "title": conv.title,
+                "context": conv.get_context_summary(),
+                "messages": messages,
+            }
         })
+
+
+class AssistantConversationDetailApiView(LoginRequiredMixin, View):
+    """
+    Get full details and message history of a specific conversation.
+    """
+
+    def get(self, request: HttpRequest, conversation_id: int) -> JsonResponse:
+        service = AssistantService()
+        conv = service.get_conversation(conversation_id, request.user)
+        if not conv:
+            return JsonResponse({"success": False, "error": "Conversation not found"}, status=404)
+
+        messages = [
+            {
+                "id": m.id,
+                "sender": m.sender,
+                "content": m.content,
+                "evidence": m.evidence,
+                "created_at": m.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            for m in conv.messages.all()
+        ]
+
+        return JsonResponse({
+            "success": True,
+            "conversation": {
+                "id": conv.id,
+                "title": conv.title,
+                "context": conv.get_context_summary(),
+                "created_at": conv.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "messages": messages,
+            }
+        })
+
+
+class AssistantMessageApiView(LoginRequiredMixin, View):
+    """
+    Post a new user message to a conversation and get the assistant's response.
+    """
+
+    def post(self, request: HttpRequest, conversation_id: int) -> JsonResponse:
+        try:
+            data = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except Exception:
+            data = request.POST.dict()
+
+        text = data.get("message", "").strip()
+        if not text:
+            return JsonResponse({"success": False, "error": "Message is required"}, status=400)
+
+        service = AssistantService()
+        result = service.post_user_message(conversation_id, request.user, text)
+        status_code = 200 if result.get("success") else 400
+        return JsonResponse(result, status=status_code)
+
+
+class AssistantDiagnosticsApiView(LoginRequiredMixin, View):
+    """
+    Status check and diagnostics for the internal assistant service.
+    """
+
+    def get(self, request: HttpRequest) -> JsonResponse:
+        service = AssistantService()
+        diag = service.get_status_diagnostics(request.user)
+        return JsonResponse({"success": True, "diagnostics": diag})
+
+    def post(self, request: HttpRequest) -> JsonResponse:
+        service = AssistantService()
+        diag = service.get_status_diagnostics(request.user)
+        return JsonResponse({"success": True, "diagnostics": diag})
+
 

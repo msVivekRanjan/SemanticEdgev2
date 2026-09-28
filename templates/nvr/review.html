@@ -46,6 +46,27 @@
   </form>
 </div>
 
+{% if selected_track_id or selected_event_id %}
+<!-- ── Semantic Filter Banner from Explore ────────────────────────────────── -->
+<div style="display: flex; gap: 10px; align-items: center; padding: 8px 16px; background: rgba(109,94,245,0.12); border: 1px solid rgba(109,94,245,0.3); border-radius: var(--radius); margin: 0 16px 14px 16px; flex-wrap: wrap;">
+  <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">filter_list</span>
+  <span style="font-size: 12px; font-weight: 600; color: var(--on-surface);">Active Semantic Filter from Explore:</span>
+  {% if selected_track_id %}
+    <span style="background: rgba(160,255,60,0.15); color: #a0ff3c; border: 1px solid rgba(160,255,60,0.3); font-size: 11px; padding: 2px 8px; border-radius: 12px; font-family: var(--font-mono);">
+      Track #{{ selected_track_id }}
+    </span>
+  {% endif %}
+  {% if selected_event_id %}
+    <span style="background: rgba(60,200,255,0.15); color: #3cc8ff; border: 1px solid rgba(60,200,255,0.3); font-size: 11px; padding: 2px 8px; border-radius: 12px; font-family: var(--font-mono);">
+      Event #{{ selected_event_id }}
+    </span>
+  {% endif %}
+  <a href="{% url 'nvr:review' %}" class="btn btn--ghost btn--sm" style="margin-left: auto; font-size: 11px; padding: 2px 8px; height: 24px;">
+    Clear Filter
+  </a>
+</div>
+{% endif %}
+
 <!-- ── Review Workspace Layout ───────────────────────────────────────────── -->
 <div class="nvr-review-layout">
 
@@ -113,6 +134,18 @@
             <div class="nvr-event-card__meta">
               <span>{{ event.camera_name }}</span>
               <span>{% if event.track_id != "-1" %}Track #{{ event.track_id }}{% else %}Untracked{% endif %}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
+              <span style="font-size: 10px; color: var(--outline); font-family: var(--font-mono);">#{{ event.id }}</span>
+              <a href="{% url 'nvr:explore' %}?event_id={{ event.id }}&investigate=1"
+                 class="btn btn--secondary btn--sm"
+                 style="font-size: 10px; padding: 2px 8px; height: 22px; display: inline-flex; align-items: center; gap: 4px; background: rgba(109,94,245,0.15); border-color: rgba(109,94,245,0.4); color: #fff;"
+                 onclick="event.stopPropagation();"
+                 title="Investigate in Explore Assistant">
+                <span class="material-symbols-outlined" style="font-size: 13px; color: var(--primary);">smart_toy</span>
+                <span>Investigate</span>
+              </a>
             </div>
           </div>
         </div>

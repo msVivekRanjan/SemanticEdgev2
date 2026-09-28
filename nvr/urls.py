@@ -6,6 +6,10 @@ Routes for the professional NVR dashboard tabs, Edge AI services, and streaming 
 
 from django.urls import path
 from .views import (
+    AssistantConversationApiView,
+    AssistantConversationDetailApiView,
+    AssistantDiagnosticsApiView,
+    AssistantMessageApiView,
     CameraThresholdApiView,
     CameraZonesApiView,
     DeleteDetectionApiView,
@@ -25,7 +29,6 @@ from .views import (
     StatsView,
     StreamView,
     SystemStatusApiView,
-    TestTelegramAlertView,
     UpdateDetectionDescriptionApiView,
 )
 
@@ -70,6 +73,10 @@ urlpatterns = [
     path("api/detection/<int:event_id>/update-description/", UpdateDetectionDescriptionApiView.as_view(), name="api_update_description"),
     path("api/detection/<int:event_id>/delete/", DeleteDetectionApiView.as_view(), name="api_delete_detection"),
 
-    # Telegram Alert Diagnostic Test API
-    path("api/test-telegram-alert/", TestTelegramAlertView.as_view(), name="test_telegram_alert"),
+    # SemanticEdge Internal Assistant APIs
+    path("api/assistant/conversations/", AssistantConversationApiView.as_view(), name="assistant_conversations"),
+    path("api/assistant/conversations/<int:conversation_id>/", AssistantConversationDetailApiView.as_view(), name="assistant_conversation_detail"),
+    path("api/assistant/conversations/<int:conversation_id>/messages/", AssistantMessageApiView.as_view(), name="assistant_messages"),
+    path("api/assistant/diagnostics/", AssistantDiagnosticsApiView.as_view(), name="assistant_diagnostics"),
 ]
+

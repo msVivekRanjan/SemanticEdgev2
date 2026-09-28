@@ -10,8 +10,8 @@ from .models import (
     AttendanceRecord,
     ObjectCountRecord,
     MonitoringZone,
-    TelegramSession,
-    TelegramFeedback,
+    AlertConversation,
+    ChatMessage,
 )
 
 
@@ -304,51 +304,50 @@ class NVRAuthorizationAndTabsTests(TestCase):
         self.assertEqual(mode, "night")
         self.assertLess(intensity, 75.5)
 
-    def test_openclaw_nlp_intent_parsing(self):
-        from .openclaw import (
-            OpenClawNLPEngine,
-            INTENT_LATEST_INTRUSION,
-            INTENT_LATEST_IMAGE,
-            INTENT_TRACK_ID,
-            INTENT_YESTERDAY_ALERTS,
-            INTENT_HELP,
-            INTENT_GENERAL_CONVERSATION,
-        )
+    def test_assistant_nlp_intent_parsing(self):
+        from .assistant.nlp import AssistantNLPEngine
 
-        nlp = OpenClawNLPEngine()
+        nlp = AssistantNLPEngine()
 
         # 1. Latest intrusion
         intent, params = nlp.parse_intent("latest intrusion")
-        self.assertEqual(intent, INTENT_LATEST_INTRUSION)
+        self.assertEqual(intent, AssistantNLPEngine.INTENT_LATEST_INTRUSION)
 
         # 2. Show latest image
         intent, params = nlp.parse_intent("show latest image")
-        self.assertEqual(intent, INTENT_LATEST_IMAGE)
+        self.assertEqual(intent, AssistantNLPEngine.INTENT_LATEST_IMAGE)
 
         # 3. Send image for Track ID 5
         intent, params = nlp.parse_intent("send image for Track ID 5")
-        self.assertEqual(intent, INTENT_TRACK_ID)
+        self.assertEqual(intent, AssistantNLPEngine.INTENT_TRACK_ID)
         self.assertEqual(params.get("track_id"), 5)
 
         # 4. Show yesterday's alerts
         intent, params = nlp.parse_intent("show yesterday's alerts")
-        self.assertEqual(intent, INTENT_YESTERDAY_ALERTS)
+        self.assertEqual(intent, AssistantNLPEngine.INTENT_YESTERDAY_ALERTS)
 
         # 5. Help
         intent, params = nlp.parse_intent("help")
-        self.assertEqual(intent, INTENT_HELP)
+        self.assertEqual(intent, AssistantNLPEngine.INTENT_HELP)
 
-        # 6. General conversation (should be classified as general conversation and rejected)
+        # 6. General conversation
         intent, params = nlp.parse_intent("how are you today?")
-        self.assertEqual(intent, INTENT_GENERAL_CONVERSATION)
+        self.assertEqual(intent, AssistantNLPEngine.INTENT_GENERAL)
 
         intent, params = nlp.parse_intent("tell me a joke")
-        self.assertEqual(intent, INTENT_GENERAL_CONVERSATION)
+        self.assertEqual(intent, AssistantNLPEngine.INTENT_GENERAL)
 
-    def test_openclaw_natural_language_queries(self):
-        from .openclaw import OpenClawAssistant
-        from django.utils import timezone
-        from datetime import timedelta
+    def test_assistant_controlled_nvr_tools(self):
+        from .assistant.tools import NVRTools
+
+        # Create monitoring zone
+        MonitoringZone.objects.create(
+            camera=self.camera1,
+            name="Main Perimeter Zone",
+            zone_type="polygon",
+            target_classes=["person"],
+            is_active=True,
+        )
 
         # Create intrusion detection event
         event1 = DetectionEvent.objects.create(
@@ -361,37 +360,53 @@ class NVRAuthorizationAndTabsTests(TestCase):
             bbox_y1=50,
             bbox_x2=200,
             bbox_y2=350,
-            line_crossing_status="Intrusion: Main Gate",
+            line_crossing_status="Intrusion: Main Perimeter",
             description="Person breached main perimeter",
-            snapshot_path="",
+            snapshot_path="/media/detections/test_snap.jpg",
         )
 
-        assistant = OpenClawAssistant(bot_token="dummy_test_token", chat_id="123456")
+        # 1. Alert details
+        details = NVRTools.get_alert_details(event1.id, user=self.user1)
+        self.assertTrue(details["found"])
+        self.assertEqual(details["track_id"], 5)
+        self.assertEqual(details["class_name"], "person")
+        self.assertEqual(details["camera_name"], "Alice Camera")
 
-        # Query by Track ID 5
-        res_track = assistant.interpret_and_query("send image for Track ID 5")
-        self.assertTrue(res_track["success"])
-        self.assertEqual(res_track["event"].track_id, 5)
+        # 2. Latest intrusion
+        intrusion = NVRTools.get_latest_intrusion(user=self.user1)
+        self.assertTrue(intrusion["found"])
+        self.assertEqual(intrusion["id"], event1.id)
 
-        # Query latest intrusion
-        res_intrusion = assistant.interpret_and_query("latest intrusion")
-        self.assertTrue(res_intrusion["success"])
-        self.assertEqual(res_intrusion["event"].track_id, 5)
+        # 3. Track history
+        track_hist = NVRTools.get_track_history(5, user=self.user1)
+        self.assertTrue(track_hist["found"])
+        self.assertEqual(track_hist["total_records"], 1)
 
-        # Query latest image
-        res_latest = assistant.interpret_and_query("show latest image")
-        self.assertTrue(res_latest["success"])
-        self.assertEqual(res_latest["event"].class_name, "person")
+        # 4. Camera status
+        cam_status = NVRTools.get_camera_status(user=self.user1)
+        self.assertEqual(cam_status["total_cameras"], 1)
+        self.assertEqual(cam_status["cameras"][0]["name"], "Alice Camera")
 
-        # Query general conversation -> Must receive helpful suggestions (not rejection)
-        res_gen = assistant.interpret_and_query("tell me a funny story")
-        self.assertFalse(res_gen["success"])
-        self.assertIn("QUERY NOT RECOGNIZED", res_gen["message"])
-        self.assertIn("RECOMMENDED OPERATIONAL QUERIES", res_gen["message"])
+        # 5. System telemetry
+        telemetry = NVRTools.get_system_telemetry(user=self.user1)
+        self.assertEqual(telemetry["server_status"], "ONLINE (HEALTHY)")
+        self.assertIn("detection_events_logged", telemetry)
 
-    def test_openclaw_handle_incoming_message_stages(self):
-        from .openclaw import OpenClawAssistant, send_telegram_alert
-        from unittest.mock import patch
+        # 6. Detection statistics
+        stats = NVRTools.get_detection_statistics("today", user=self.user1)
+        self.assertGreaterEqual(stats["total_events"], 1)
+        self.assertIn("person", stats["class_breakdown"])
+
+        # 7. Monitoring zones
+        zones = NVRTools.get_monitoring_zones(user=self.user1)
+        self.assertEqual(zones["total_zones"], 1)
+
+        # 8. Export records
+        exports = NVRTools.get_export_records(user=self.user1)
+        self.assertIn("total_files", exports)
+
+    def test_assistant_service_conversation_lifecycle_and_persistence(self):
+        from .assistant.service import AssistantService
 
         event = DetectionEvent.objects.create(
             user=self.user1,
@@ -405,186 +420,96 @@ class NVRAuthorizationAndTabsTests(TestCase):
             bbox_y2=100,
             line_crossing_status="Intrusion: Perimeter",
             description="Car in restricted lane",
-            snapshot_path="",
+            snapshot_path="/media/detections/car_88.jpg",
         )
 
-        assistant = OpenClawAssistant(bot_token="dummy_test_token", chat_id="123456")
+        service = AssistantService()
 
-        # Authenticate session for chat 123456
-        TelegramSession.objects.create(
-            chat_id="123456",
-            user=self.user1,
-            is_authenticated=True,
-            state="AUTHENTICATED_IDLE",
-        )
+        # 1. Create conversation bound to the alert
+        conv = service.get_or_create_conversation(self.user1, event_id=event.id)
+        self.assertIsNotNone(conv)
+        self.assertEqual(conv.event, event)
+        self.assertEqual(conv.camera, self.camera1)
+        self.assertIn("Car", conv.title)
+        self.assertEqual(conv.context_snapshot["track_id"], 88)
 
-        with patch.object(assistant, "send_text_response", return_value=True) as mock_send_text:
-            # Test NVR query execution
-            res = assistant.handle_incoming_message("send image for Track ID 88", chat_id="123456")
-            self.assertTrue(res["success"])
-            self.assertEqual(res["intent"], "track_id")
-            mock_send_text.assert_called_once()
+        # Verify initial system greeting
+        first_msg = conv.messages.first()
+        self.assertIsNotNone(first_msg)
+        self.assertEqual(first_msg.sender, "system")
+        self.assertIn("Car #88", first_msg.content)
 
-            # Test general conversation receiving helpful guidance
-            mock_send_text.reset_mock()
-            res_gen = assistant.handle_incoming_message("what is your favorite movie?", chat_id="123456")
-            self.assertEqual(res_gen["intent"], "general_conversation")
-            self.assertFalse(res_gen["success"])
-            mock_send_text.assert_called_once()
-            call_args = mock_send_text.call_args[0]
-            self.assertIn("QUERY NOT RECOGNIZED", call_args[1])
-            self.assertIn("RECOMMENDED OPERATIONAL QUERIES", call_args[1])
+        # 2. Operator asks question about snapshot without needing to re-explain the alert
+        res = service.post_user_message(conv.id, self.user1, "show snapshot for this event")
+        self.assertTrue(res["success"])
+        self.assertIn("car_88.jpg", res["assistant_message"]["evidence"]["snapshot_url"])
 
-        # Test automatic intrusion alert dispatch
-        alert_sent = send_telegram_alert(event)
-        self.assertTrue(alert_sent)
+        # 3. Multi-turn follow-up: Operator asks for track history
+        res2 = service.post_user_message(conv.id, self.user1, "what is the movement history for this track?")
+        self.assertTrue(res2["success"])
+        self.assertIn("TRACK HISTORY RECORD", res2["assistant_message"]["content"])
+        self.assertIn("#88", res2["assistant_message"]["content"])
 
-    def test_telegram_auth_flow_interactive_and_direct(self):
-        from .openclaw import OpenClawAssistant
-        from unittest.mock import patch
+        # Verify chat messages persisted in DB
+        self.assertEqual(conv.messages.count(), 5)  # system + user1 + assistant1 + user2 + assistant2
 
-        assistant = OpenClawAssistant(bot_token="dummy_test_token", chat_id="777888")
+    def test_assistant_conversations_api(self):
+        from .assistant.service import AssistantService
 
-        with patch.object(assistant, "send_text_response", return_value=True) as mock_send:
-            # 1. Unauthenticated /start triggers username prompt
-            res = assistant.handle_incoming_message("/start", chat_id="777888")
-            self.assertFalse(res["success"])
-            self.assertIn("AUTHENTICATION REQUIRED", res["message"])
-
-            # 2. Enter invalid username
-            res = assistant.handle_incoming_message("nonexistent_user", chat_id="777888")
-            self.assertFalse(res["success"])
-            self.assertIn("not found in NVR database", res["message"])
-
-            # 3. Enter valid username (alice) -> Prompts for password
-            res = assistant.handle_incoming_message("alice", chat_id="777888")
-            self.assertFalse(res["success"])
-            self.assertIn("Please enter your password", res["message"])
-
-            # 4. Enter incorrect password -> Fails
-            res = assistant.handle_incoming_message("wrongpass", chat_id="777888")
-            self.assertFalse(res["success"])
-            self.assertIn("Invalid password", res["message"])
-
-            # 5. Direct login /login alice password123 -> Authenticates session
-            res = assistant.handle_incoming_message("/login alice password123", chat_id="777888")
-            self.assertTrue(res["success"])
-            self.assertIn("SESSION ESTABLISHED", res["message"])
-            self.assertIn("CAPABILITIES & SAMPLE QUERIES", res["message"])
-
-            # Verify session model in DB
-            sess = TelegramSession.objects.get(chat_id="777888")
-            self.assertTrue(sess.is_authenticated)
-            self.assertEqual(sess.user, self.user1)
-
-            # 6. /logout terminates session
-            res_logout = assistant.handle_incoming_message("/logout", chat_id="777888")
-            self.assertTrue(res_logout["success"])
-            self.assertIn("SESSION TERMINATED", res_logout["message"])
-            sess.refresh_from_db()
-            self.assertFalse(sess.is_authenticated)
-
-    def test_expanded_surveillance_intents(self):
-        from .openclaw import OpenClawAssistant
-        from unittest.mock import patch
-
-        # Create monitoring zone
-        MonitoringZone.objects.create(
-            camera=self.camera1,
-            name="Main Gate Zone",
-            zone_type="line",
-            target_classes=["person"],
-            is_active=True,
-        )
-
-        # Create test event
-        DetectionEvent.objects.create(
+        event = DetectionEvent.objects.create(
             user=self.user1,
             camera=self.camera1,
-            track_id=10,
-            class_name="person",
-            confidence=0.92,
-            line_crossing_status="Intrusion: Main Gate",
-            description="Person breached zone",
+            track_id=42,
+            class_name="truck",
+            confidence=0.89,
+            line_crossing_status="none",
         )
 
-        assistant = OpenClawAssistant(bot_token="dummy_test_token", chat_id="999000")
-        TelegramSession.objects.create(
-            chat_id="999000",
-            user=self.user1,
-            is_authenticated=True,
-            state="AUTHENTICATED_IDLE",
+        self.client.login(username="alice", password="password123")
+
+        # 1. Create conversation via API
+        res_create = self.client.post(
+            reverse("nvr:assistant_conversations"),
+            data={"event_id": event.id},
+            content_type="application/json",
         )
+        self.assertEqual(res_create.status_code, 200)
+        data_create = res_create.json()
+        self.assertTrue(data_create["success"])
+        conv_id = data_create["conversation"]["id"]
 
-        with patch.object(assistant, "send_text_response", return_value=True):
-            # Camera status
-            res_cam = assistant.handle_incoming_message("camera status", chat_id="999000")
-            self.assertTrue(res_cam["success"])
-            self.assertIn("CAMERA FLEET STATUS", res_cam["message"])
-
-            # System status
-            res_sys = assistant.handle_incoming_message("system status", chat_id="999000")
-            self.assertTrue(res_sys["success"])
-            self.assertIn("SYSTEM TELEMETRY", res_sys["message"])
-
-            # Detection statistics
-            res_stats = assistant.handle_incoming_message("detection statistics", chat_id="999000")
-            self.assertTrue(res_stats["success"])
-            self.assertIn("DETECTION STATISTICS", res_stats["message"])
-
-            # Monitoring zones
-            res_zones = assistant.handle_incoming_message("monitoring zones", chat_id="999000")
-            self.assertTrue(res_zones["success"])
-            self.assertIn("MONITORING ZONES", res_zones["message"])
-
-            # Export requests
-            res_exp = assistant.handle_incoming_message("export requests", chat_id="999000")
-            self.assertTrue(res_exp["success"])
-            self.assertIn("EXPORT ARCHIVE", res_exp["message"])
-
-    def test_telegram_feedback_collection(self):
-        from .openclaw import OpenClawAssistant
-        from unittest.mock import patch
-
-        assistant = OpenClawAssistant(bot_token="dummy_test_token", chat_id="555444")
-        session = TelegramSession.objects.create(
-            chat_id="555444",
-            user=self.user1,
-            is_authenticated=True,
-            state="AUTHENTICATED_IDLE",
+        # 2. Get conversation detail via API
+        res_detail = self.client.get(
+            reverse("nvr:assistant_conversation_detail", kwargs={"conversation_id": conv_id})
         )
+        self.assertEqual(res_detail.status_code, 200)
+        data_detail = res_detail.json()
+        self.assertTrue(data_detail["success"])
+        self.assertEqual(data_detail["conversation"]["context"]["track_id"], 42)
 
-        with patch.object(assistant, "send_text_response", return_value=True):
-            # Query camera status -> State transitions to AWAITING_FEEDBACK
-            assistant.handle_incoming_message("camera status", chat_id="555444")
-            session.refresh_from_db()
-            self.assertEqual(session.state, "AWAITING_FEEDBACK")
+        # 3. Post user message via API
+        res_msg = self.client.post(
+            reverse("nvr:assistant_messages", kwargs={"conversation_id": conv_id}),
+            data={"message": "camera status"},
+            content_type="application/json",
+        )
+        self.assertEqual(res_msg.status_code, 200)
+        data_msg = res_msg.json()
+        self.assertTrue(data_msg["success"])
+        self.assertIn("CAMERA FLEET STATUS", data_msg["assistant_message"]["content"])
 
-            # Reply YES -> Feedback saved in database
-            res_fb = assistant.handle_incoming_message("YES", chat_id="555444")
-            self.assertTrue(res_fb["success"])
-            self.assertIn("FEEDBACK RECORDED", res_fb["message"])
-
-            fb = TelegramFeedback.objects.filter(chat_id="555444").first()
-            self.assertIsNotNone(fb)
-            self.assertTrue(fb.is_helpful)
-            self.assertEqual(fb.intent, "camera_status")
-
-            session.refresh_from_db()
-            self.assertEqual(session.state, "AUTHENTICATED_IDLE")
+        # 4. List conversations
+        res_list = self.client.get(reverse("nvr:assistant_conversations"))
+        self.assertEqual(res_list.status_code, 200)
+        data_list = res_list.json()
+        self.assertTrue(data_list["success"])
+        self.assertGreaterEqual(len(data_list["conversations"]), 1)
 
     def test_no_emojis_in_all_reports(self):
-        from .openclaw import OpenClawAssistant
+        from .assistant.llm import RuleBasedNVRProvider
         import re
 
-        assistant = OpenClawAssistant(bot_token="dummy_test_token", chat_id="333222")
-        TelegramSession.objects.create(
-            chat_id="333222",
-            user=self.user1,
-            is_authenticated=True,
-            state="AUTHENTICATED_IDLE",
-        )
-
+        provider = RuleBasedNVRProvider()
         emoji_pattern = re.compile(
             r"[\U00010000-\U0010ffff]|[\u2600-\u27bf]|[\u2300-\u23ff]|[\u2b50-\u2b55]"
         )
@@ -599,8 +524,8 @@ class NVRAuthorizationAndTabsTests(TestCase):
             "help",
             "tell me something random",
         ]:
-            res = assistant.interpret_and_query(query, user=self.user1)
-            msg = res["message"]
+            res = provider.generate_response(query, history=[], context={}, user=self.user1)
+            msg = res["content"]
             self.assertFalse(
                 bool(emoji_pattern.search(msg)),
                 f"Emoji detected in response for '{query}':\n{msg}",
@@ -632,32 +557,41 @@ class NVRAuthorizationAndTabsTests(TestCase):
         self.assertIn("View Live Logs", content)
         self.assertIn(reverse("nvr:logs"), content)
 
-    def test_settings_page_telegram_card(self):
+    def test_settings_page_assistant_card(self):
         self.client.login(username="alice", password="password123")
         res = self.client.get(reverse("nvr:settings"))
         self.assertEqual(res.status_code, 200)
         content = res.content.decode()
-        self.assertIn("Telegram Intrusion Alert", content)
-        self.assertIn("Test Telegram Alert", content)
-        self.assertIn("btn-test-telegram-alert", content)
+        self.assertIn("Internal Assistant Service", content)
+        self.assertIn("btn-test-assistant", content)
 
-    def test_test_telegram_alert_api(self):
+    def test_assistant_diagnostics_api(self):
         self.client.login(username="alice", password="password123")
-        from unittest.mock import patch
+        res = self.client.get(reverse("nvr:assistant_diagnostics"))
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["success"])
+        self.assertTrue(data["diagnostics"]["real_time_loop_decoupled"])
+        self.assertIn("get_alert_details", data["diagnostics"]["tools_registered"])
 
-        mock_result = (True, {
-            "status_code": 200,
-            "ok": True,
-            "response": {"ok": True, "result": {"message_id": 1337}},
-            "chat_id": "1448272968",
-        })
+    def test_explore_to_review_semantic_flow(self):
+        event = DetectionEvent.objects.create(
+            user=self.user1,
+            camera=self.camera1,
+            track_id=99,
+            class_name="motorcycle",
+            confidence=0.87,
+            line_crossing_status="none",
+        )
+        self.client.login(username="alice", password="password123")
 
-        with patch("nvr.views.send_telegram_alert", return_value=mock_result):
-            res = self.client.post(reverse("nvr:test_telegram_alert"))
-            self.assertEqual(res.status_code, 200)
-            data = res.json()
-            self.assertTrue(data["success"])
-            self.assertEqual(data["status_code"], 200)
-            self.assertEqual(data["chat_id"], "1448272968")
+        # Test querying Review with specific track_id and event_id from Explore
+        res = self.client.get(reverse("nvr:review") + f"?track_id=99&event_id={event.id}")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context["selected_track_id"], "99")
+        self.assertEqual(res.context["selected_event_id"], str(event.id))
+        self.assertEqual(len(res.context["events"]), 1)
+        self.assertEqual(res.context["events"][0]["track_id"], "99")
+
 
 

@@ -238,6 +238,31 @@ document.addEventListener('DOMContentLoaded', () => {
         delBtn.disabled = false;
       }
 
+      // Wire Inspect in Review button
+      const reviewBtn = document.getElementById('modal-review-btn');
+      if (reviewBtn) {
+        let revUrl = '/nvr/review/';
+        const params = [];
+        if (data.class) params.push(`class=${encodeURIComponent(data.class.toLowerCase())}`);
+        if (data.track_id && data.track_id !== '-1' && data.track_id !== 'None') params.push(`track_id=${encodeURIComponent(data.track_id)}`);
+        if (data.id) params.push(`event_id=${encodeURIComponent(data.id)}`);
+        if (params.length > 0) revUrl += '?' + params.join('&');
+        reviewBtn.href = revUrl;
+      }
+
+      // Wire Investigate with Assistant button
+      const investigateBtn = document.getElementById('modal-investigate-btn');
+      if (investigateBtn) {
+        investigateBtn.onclick = () => {
+          closeModal();
+          if (typeof window.openAssistantForEvent === 'function') {
+            window.openAssistantForEvent(data.id, data);
+          } else {
+            window.location.href = `/nvr/explore/?event_id=${data.id || ''}&investigate=1`;
+          }
+        };
+      }
+
       modalBackdrop.classList.add('is-open');
       modalBackdrop.setAttribute('aria-hidden', 'false');
     }

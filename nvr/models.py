@@ -262,77 +262,98 @@ class MonitoringZone(models.Model):
         return f"{self.name} ({self.zone_type}) on {self.camera.name}"
 
 
-class TelegramSession(models.Model):
+class AlertConversation(models.Model):
     """
-    Tracks authenticated session and interaction state for a Telegram user/chat.
+    Persistent investigation conversation associated with an alert, detection event,
+    or object tracking session. Retains camera, detection, track, and timestamp context.
     """
 
-    STATE_CHOICES = [
-        ("IDLE", "Idle / Not Started"),
-        ("AWAITING_USERNAME", "Awaiting Username"),
-        ("AWAITING_PASSWORD", "Awaiting Password"),
-        ("AUTHENTICATED_IDLE", "Authenticated & Ready"),
-        ("AWAITING_FEEDBACK", "Awaiting Feedback"),
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="alert_conversations",
+    )
+    event = models.ForeignKey(
+        DetectionEvent,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="conversations",
+    )
+    camera = models.ForeignKey(
+        Camera,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="conversations",
+    )
+    title = models.CharField(max_length=200, default="Alert Investigation")
+    context_snapshot = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Snapshot of the alert context (camera, track, object class, timestamp).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        verbose_name = "Alert Conversation"
+        verbose_name_plural = "Alert Conversations"
+
+    def __str__(self) -> str:
+        return f"Conversation #{self.id}: {self.title} ({self.user.username})"
+
+    def get_context_summary(self) -> dict:
+        """Returns structured dictionary of the conversation's active surveillance context."""
+        ctx = dict(self.context_snapshot or {})
+        if self.event:
+            ctx.setdefault("event_id", self.event.id)
+            ctx.setdefault("track_id", self.event.track_id)
+            ctx.setdefault("class_name", self.event.class_name)
+            ctx.setdefault("confidence", self.event.confidence)
+            ctx.setdefault("camera_id", self.event.camera_id)
+            ctx.setdefault("camera_name", self.event.camera.name)
+            ctx.setdefault("status", self.event.line_crossing_status)
+            ctx.setdefault("snapshot_url", self.event.snapshot_path)
+            ctx.setdefault("timestamp", self.event.created_at.strftime("%Y-%m-%d %H:%M:%S"))
+        elif self.camera:
+            ctx.setdefault("camera_id", self.camera.id)
+            ctx.setdefault("camera_name", self.camera.name)
+        return ctx
+
+
+class ChatMessage(models.Model):
+    """
+    Message in an alert/event investigation conversation.
+    Stores user queries, system prompts, assistant responses, and structured evidence payloads.
+    """
+
+    SENDER_CHOICES = [
+        ("user", "Operator"),
+        ("assistant", "SemanticEdge Assistant"),
+        ("system", "System"),
     ]
 
-    chat_id = models.CharField(max_length=64, unique=True, db_index=True)
-    user = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="telegram_sessions",
+    conversation = models.ForeignKey(
+        AlertConversation,
+        on_delete=models.CASCADE,
+        related_name="messages",
     )
-    is_authenticated = models.BooleanField(default=False)
-    state = models.CharField(max_length=32, choices=STATE_CHOICES, default="IDLE")
-    pending_username = models.CharField(max_length=150, blank=True)
-    last_intent = models.CharField(max_length=64, blank=True)
-    last_query = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    last_interaction = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["-last_interaction"]
-        verbose_name = "Telegram Session"
-        verbose_name_plural = "Telegram Sessions"
-
-    def __str__(self) -> str:
-        user_str = self.user.username if self.user else "Anonymous"
-        status = "Authenticated" if self.is_authenticated else "Unauthenticated"
-        return f"Chat {self.chat_id} ({user_str} - {status})"
-
-
-class TelegramFeedback(models.Model):
-    """
-    Stores user feedback (Yes/No helpfulness) after the assistant serves a request.
-    """
-
-    session = models.ForeignKey(
-        TelegramSession,
-        on_delete=models.SET_NULL,
-        null=True,
+    sender = models.CharField(max_length=20, choices=SENDER_CHOICES, default="user")
+    content = models.TextField()
+    evidence = models.JSONField(
+        default=dict,
         blank=True,
-        related_name="feedbacks",
+        help_text="Structured evidence metadata, snapshots, tool outputs, or action links.",
     )
-    user = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="telegram_feedbacks",
-    )
-    chat_id = models.CharField(max_length=64, db_index=True)
-    query_text = models.TextField(blank=True)
-    intent = models.CharField(max_length=64, blank=True)
-    is_helpful = models.BooleanField(help_text="True if Yes, False if No")
-    raw_feedback = models.CharField(max_length=20, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-created_at"]
-        verbose_name = "Telegram Feedback"
-        verbose_name_plural = "Telegram Feedback Entries"
+        ordering = ["created_at"]
+        verbose_name = "Chat Message"
+        verbose_name_plural = "Chat Messages"
 
     def __str__(self) -> str:
-        status = "Helpful" if self.is_helpful else "Unhelpful"
-        return f"Feedback ({status}) from Chat {self.chat_id} for '{self.intent}'"
+        return f"[{self.sender.upper()}] Conv #{self.conversation_id}: {self.content[:40]}"
+

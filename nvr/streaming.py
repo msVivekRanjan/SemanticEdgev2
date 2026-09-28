@@ -484,9 +484,6 @@ def frame_generator(camera: "Camera") -> Generator[bytes, None, None]:
                                 f"[DetectionEvent saved] Event ID={event.pk} | Track=#{event.track_id} | "
                                 f"Camera='{camera.name}' | Status='{event.line_crossing_status}' | Snapshot='{event.snapshot_path}'"
                             )
-                            # Dispatch Telegram Alert (Stages 3 to 7)
-                            from nvr.openclaw import send_telegram_alert
-                            send_telegram_alert(event)
 
                     except Exception as e:
                         print(f"[SemanticEdge] Error saving object snapshot or alert: {e}")
@@ -632,12 +629,11 @@ def restricted_area_frame_generator(camera: "Camera") -> Generator[bytes, None, 
     - Tracks objects using ByteTrack.
     - Performs line crossing and polygon region entry detection.
     - Creates single DetectionEvent intrusion record per unique tracked object entry.
-    - Automatically captures bounding box snapshot and sends Telegram alert.
+    - Automatically captures bounding box snapshot and saves intrusion DetectionEvent.
     - Computes Day/Night scene mode with temporal smoothing and displays live HUD badge.
     """
     from django.conf import settings
     from nvr.models import DetectionEvent, MonitoringZone
-    from nvr.openclaw import send_telegram_alert
 
     model_path = getattr(settings, "YOLO_MODEL_PATH", str(_REPO_ROOT / "yolov8n.pt"))
     conf_threshold = getattr(settings, "YOLO_CONF_THRESHOLD", 0.35)
@@ -819,9 +815,6 @@ def restricted_area_frame_generator(camera: "Camera") -> Generator[bytes, None, 
                                     f"Camera='{camera.name}' | Status='{event.line_crossing_status}' | Snapshot='{event.snapshot_path}'"
                                 )
                                 print(stage2_msg)
-
-                                # Dispatch Telegram Alert (Stages 3 to 7)
-                                send_telegram_alert(event)
                             except Exception as ex:
                                 print(f"[SemanticEdge] Intrusion event creation or alert error: {ex}")
 
