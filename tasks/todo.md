@@ -59,11 +59,11 @@
   - [ ] Create and run migrations (`makemigrations`, `migrate`).
   - [ ] Clean up tests in `nvr/tests.py`, `accounts/tests.py`, and `core/tests.py`.
 
-- [ ] 2. Review Tab: Reduce Whitespace & Make Entire Card Clickable
-  - [ ] Streamline vertical space in `templates/nvr/review.html` between search/filter section and detection groups.
-  - [ ] Make entire detection card clickable (`openDetailModalFromEl`) with proper cursor and hover affordance.
-  - [ ] Remove the small info icon button.
-  - [ ] Ensure "Investigate" button uses `event.stopPropagation()` to avoid conflicting modal opening.
+- [x] 2. Review Tab: Reduce Whitespace & Make Entire Card Clickable
+  - [x] Streamline vertical space in `templates/nvr/review.html` between search/filter section and detection groups (16px search-to-filter gap, 28px filter-to-results gap verified via browser subagent).
+  - [x] Make entire detection card clickable (`openDetailModalFromEl`) with proper cursor and hover affordance.
+  - [x] Remove the small info icon button.
+  - [x] Ensure "Investigate" button uses `event.stopPropagation()` to avoid conflicting modal opening.
 
 - [ ] 3. Explore Tab: Fix Page Scrolling (ChatGPT Fixed-Viewport Layout)
   - [ ] Ensure Explore viewport remains fixed within application shell (`height: 100%; overflow: hidden;`).
