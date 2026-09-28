@@ -2021,6 +2021,35 @@ body {
   animation: modal-in 0.3s var(--ease-expo-out);
 }
 
+.nvr-modal-card--two-col {
+  max-width: 960px !important;
+  width: 92vw !important;
+}
+
+@media (max-width: 820px) {
+  .nvr-modal-card--two-col {
+    max-width: 95vw !important;
+    width: 95vw !important;
+    max-height: 92vh !important;
+  }
+
+  .nvr-modal-two-col-body {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    padding: 14px 16px !important;
+  }
+
+  .nvr-modal-two-col-left {
+    min-height: 220px !important;
+  }
+
+  .nvr-modal-two-col-left #modal-img-container {
+    min-height: 220px !important;
+    max-height: 280px !important;
+    height: 240px !important;
+  }
+}
+
 @keyframes modal-in {
   from {
     opacity: 0;

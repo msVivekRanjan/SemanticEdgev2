@@ -170,8 +170,8 @@
 
   <!-- ── 4. Interactive Enhanced Object Detail Modal ───────────────────────── -->
   <div class="nvr-modal-backdrop" id="nvr-detail-modal" aria-hidden="true" role="dialog">
-    <div class="nvr-modal-card"
-      style="max-width: 680px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
+    <div class="nvr-modal-card nvr-modal-card--two-col"
+      style="max-width: 960px; width: 92vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
       <!-- Modal Header -->
       <div
         style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); background-color: var(--surface-container-low);">
@@ -186,98 +186,104 @@
         </button>
       </div>
 
-      <!-- Modal Body (Scrollable) -->
-      <div style="padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;">
+      <!-- Modal Body (Two-Column Layout: Left Image, Right Details/Metadata) -->
+      <div class="nvr-modal-two-col-body" style="padding: 20px; overflow-y: auto; display: grid; grid-template-columns: minmax(340px, 1.25fr) minmax(300px, 1fr); gap: 20px; align-items: stretch; max-height: calc(90vh - 125px);">
 
-        <!-- Snapshot Image Preview Container -->
-        <div id="modal-img-container"
-          style="width: 100%; aspect-ratio: 16 / 9; max-height: 240px; background: #000; border-radius: var(--radius); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid rgba(255,255,255,0.08);">
-          <img id="modal-snapshot-img" src="" alt="Detection Snapshot"
-            style="width: 100%; height: 100%; object-fit: contain; display: none;" />
-          <div id="modal-no-img"
-            style="color: var(--outline); font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-            <span class="material-symbols-outlined" style="font-size: 32px; opacity: 0.4;">image_not_supported</span>
-            <span>No snapshot image file available</span>
-          </div>
-          <div id="modal-class-badge"
-            style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; color: var(--primary);">
-            PERSON
+        <!-- Left Column: Detection Image Evidence -->
+        <div class="nvr-modal-two-col-left" style="display: flex; flex-direction: column; height: 100%; min-height: 320px;">
+          <div id="modal-img-container"
+            style="width: 100%; height: 100%; min-height: 320px; max-height: 480px; background: #07080a; border-radius: var(--radius); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 1px solid rgba(255,255,255,0.08);">
+            <img id="modal-snapshot-img" src="" alt="Detection Snapshot"
+              style="width: 100%; height: 100%; object-fit: contain; display: none;" />
+            <div id="modal-no-img"
+              style="color: var(--outline); font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <span class="material-symbols-outlined" style="font-size: 38px; opacity: 0.35;">image_not_supported</span>
+              <span>No snapshot image file available</span>
+            </div>
+            <div id="modal-class-badge"
+              style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; color: var(--primary); border: 1px solid rgba(255,255,255,0.12); letter-spacing: 0.5px;">
+              PERSON
+            </div>
           </div>
         </div>
 
-        <!-- Metadata Table (Retrieved from Detection Logs & Database) -->
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <td style="padding: 5px 0; color: var(--on-surface-variant); width: 140px;">Timestamp:</td>
-            <td id="modal-time"
-              style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <td style="padding: 5px 0; color: var(--on-surface-variant);">Camera Source:</td>
-            <td id="modal-camera" style="padding: 5px 0; color: var(--on-surface); text-align: right;">-</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <td style="padding: 5px 0; color: var(--on-surface-variant);">Detection Event ID:</td>
-            <td id="modal-event-id"
-              style="padding: 5px 0; color: var(--primary); font-family: var(--font-mono); text-align: right;">-</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <td style="padding: 5px 0; color: var(--on-surface-variant);">Frame Number:</td>
-            <td id="modal-frame"
-              style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <td style="padding: 5px 0; color: var(--on-surface-variant);">Confidence Score:</td>
-            <td id="modal-conf"
-              style="padding: 5px 0; color: var(--primary); font-family: var(--font-mono); font-weight: 600; text-align: right;">
-              -</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <td style="padding: 5px 0; color: var(--on-surface-variant);">ByteTrack Track ID:</td>
-            <td id="modal-track"
-              style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <td style="padding: 5px 0; color: var(--on-surface-variant);">Bounding Box [x1,y1,x2,y2]:</td>
-            <td id="modal-bbox"
-              style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <td style="padding: 5px 0; color: var(--on-surface-variant);">Object Dimensions:</td>
-            <td id="modal-dims"
-              style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
-          </tr>
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
-            <td style="padding: 5px 0; color: var(--on-surface-variant);">Object Center (x, y):</td>
-            <td id="modal-center"
-              style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
-          </tr>
-          <tr>
-            <td style="padding: 5px 0; color: var(--on-surface-variant);">Line Crossing Status:</td>
-            <td id="modal-line"
-              style="padding: 5px 0; color: var(--tertiary); font-family: var(--font-mono); text-align: right;">none
-            </td>
-          </tr>
-        </table>
+        <!-- Right Column: Details & Metadata (Metadata Table + Description Field) -->
+        <div class="nvr-modal-two-col-right" style="display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
+          <!-- Metadata Table (Retrieved from Detection Logs & Database) -->
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <td style="padding: 5px 0; color: var(--on-surface-variant); width: 140px;">Timestamp:</td>
+              <td id="modal-time"
+                style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <td style="padding: 5px 0; color: var(--on-surface-variant);">Camera Source:</td>
+              <td id="modal-camera" style="padding: 5px 0; color: var(--on-surface); text-align: right;">-</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <td style="padding: 5px 0; color: var(--on-surface-variant);">Detection Event ID:</td>
+              <td id="modal-event-id"
+                style="padding: 5px 0; color: var(--primary); font-family: var(--font-mono); text-align: right;">-</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <td style="padding: 5px 0; color: var(--on-surface-variant);">Frame Number:</td>
+              <td id="modal-frame"
+                style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <td style="padding: 5px 0; color: var(--on-surface-variant);">Confidence Score:</td>
+              <td id="modal-conf"
+                style="padding: 5px 0; color: var(--primary); font-family: var(--font-mono); font-weight: 600; text-align: right;">
+                -</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <td style="padding: 5px 0; color: var(--on-surface-variant);">ByteTrack Track ID:</td>
+              <td id="modal-track"
+                style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <td style="padding: 5px 0; color: var(--on-surface-variant);">Bounding Box [x1,y1,x2,y2]:</td>
+              <td id="modal-bbox"
+                style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <td style="padding: 5px 0; color: var(--on-surface-variant);">Object Dimensions:</td>
+              <td id="modal-dims"
+                style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+              <td style="padding: 5px 0; color: var(--on-surface-variant);">Object Center (x, y):</td>
+              <td id="modal-center"
+                style="padding: 5px 0; color: var(--on-surface); font-family: var(--font-mono); text-align: right;">-</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; color: var(--on-surface-variant);">Line Crossing Status:</td>
+              <td id="modal-line"
+                style="padding: 5px 0; color: var(--tertiary); font-family: var(--font-mono); text-align: right;">none
+              </td>
+            </tr>
+          </table>
 
-        <!-- Description Field (Qwen-VL / Manual Editable) -->
-        <div
-          style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.06);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label class="input-label" style="font-size: 11px; margin: 0; color: var(--primary);">
-              AI / Natural-Language Description
-            </label>
-            <span style="font-size: 10px; color: var(--outline); font-family: var(--font-mono);">Qwen-VL Ready</span>
-          </div>
-          <textarea id="modal-desc-input" class="input" rows="2"
-            placeholder="e.g. Young man wearing a green shirt and earphones walking near gate..."
-            style="font-size: 12px; width: 100%; resize: vertical;"></textarea>
-          <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
-            <button id="modal-save-desc-btn" class="btn btn--primary btn--sm"
-              style="font-size: 11px; padding: 4px 10px;">
-              <span class="material-symbols-outlined" style="font-size: 14px;">save</span>
-              <span>Update Description</span>
-            </button>
+          <!-- Description Field (Qwen-VL / Manual Editable) -->
+          <div
+            style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.06); margin-top: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="input-label" style="font-size: 11px; margin: 0; color: var(--primary); display: flex; align-items: center; gap: 4px;">
+                <span class="material-symbols-outlined" style="font-size: 13px;">auto_awesome</span>
+                <span>AI / Natural-Language Description</span>
+              </label>
+              <span style="font-size: 10px; color: var(--outline); font-family: var(--font-mono);">Qwen-VL Ready</span>
+            </div>
+            <textarea id="modal-desc-input" class="input" rows="2"
+              placeholder="e.g. Young man wearing a green shirt and earphones walking near gate..."
+              style="font-size: 12px; width: 100%; resize: vertical;"></textarea>
+            <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+              <button id="modal-save-desc-btn" class="btn btn--primary btn--sm"
+                style="font-size: 11px; padding: 4px 10px;">
+                <span class="material-symbols-outlined" style="font-size: 14px;">save</span>
+                <span>Update Description</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -300,8 +306,8 @@
             <span>Inspect in Review</span>
           </a>
           <button id="modal-investigate-btn" type="button" class="btn btn--secondary btn--sm" style="background: rgba(109,94,245,0.15); border: 1px solid var(--primary); color: #fff;">
-            <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">smart_toy</span>
-            <span>Investigate with Assistant</span>
+            <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">forum</span>
+            <span>Investigate</span>
           </button>
           <a id="modal-download-btn" href="#" download class="btn btn--ghost btn--sm" title="Download image evidence">
             <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
