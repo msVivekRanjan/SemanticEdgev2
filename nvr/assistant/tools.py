@@ -413,8 +413,6 @@ class NVRTools:
         """
         Retrieve detection statistics, intrusion counts, and class breakdown for a given period.
         """
-        from nvr.models import AttendanceRecord
-
         event_qs = cls.get_event_queryset(user)
         now = timezone.now()
 
@@ -441,11 +439,6 @@ class NVRTools:
         total_events = filtered_qs.count()
         intrusions = filtered_qs.filter(line_crossing_status__icontains="intrusion").count()
 
-        att_qs = AttendanceRecord.objects.all()
-        if user and not (user.is_staff or user.is_superuser):
-            att_qs = att_qs.filter(user=user)
-        attendance = att_qs.filter(timestamp__range=(start_dt, end_dt)).count()
-
         class_counts = list(
             filtered_qs.values("class_name")
             .annotate(count=Count("id"))
@@ -468,7 +461,6 @@ class NVRTools:
             "period": period_label,
             "total_events": total_events,
             "intrusions": intrusions,
-            "attendance": attendance,
             "class_breakdown": {c["class_name"]: c["count"] for c in class_counts},
             "recent_events": top_events,
         }

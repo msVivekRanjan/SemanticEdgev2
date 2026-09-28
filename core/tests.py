@@ -14,11 +14,11 @@ class CoreViewTests(TestCase):
         self.assertContains(response, "SemanticEdge")
         self.assertContains(response, "SERVICES CATALOGUE")
         self.assertContains(response, "Vehicles & People Detection")
-        self.assertContains(response, "Face Recognition & Attendance")
+        self.assertContains(response, "Restricted Area & Perimeter Security")
         self.assertContains(response, "Industrial Object Counter")
 
     def test_book_demo_page_renders_with_preselection(self):
-        url = reverse("core:book_demo") + "?service=face_recognition"
+        url = reverse("core:book_demo") + "?service=vehicles_people"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "core/book_demo.html")

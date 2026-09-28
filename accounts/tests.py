@@ -36,7 +36,7 @@ class AccountsRegistrationTests(TestCase):
         # Verify default service profile created
         self.assertTrue(hasattr(user, "service_profile"))
         self.assertTrue(user.service_profile.has_vehicles_people)
-        self.assertFalse(user.service_profile.has_face_recognition)
+        self.assertFalse(user.service_profile.has_object_count)
 
     def test_registration_password_mismatch_fails(self):
         post_data = {

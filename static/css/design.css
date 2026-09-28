@@ -1548,6 +1548,67 @@ body {
   }
 }
 
+.nvr-main-workspace--explore {
+  overflow: hidden !important;
+  /* Use flex sizing, not a fixed pixel height, so children can shrink correctly */
+  height: calc(100vh - var(--nvr-bottom-h)) !important;
+  min-height: 0 !important;
+}
+
+.nvr-content-container--explore {
+  padding: 0 !important;
+  /* flex: 1 + min-height: 0 is the correct pattern for flex children that must shrink */
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.nvr-content-container--review {
+  padding: 12px 14px !important;
+}
+
+/* Floating Intrusion Alert Toast Notifications */
+.nvr-toast-container {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 440px;
+  width: calc(100vw - 48px);
+}
+
+.nvr-alert-toast {
+  pointer-events: auto;
+  background: rgba(22, 16, 30, 0.96);
+  border: 1px solid rgba(255, 60, 60, 0.65);
+  box-shadow: 0 12px 36px rgba(255, 40, 40, 0.28), 0 4px 16px rgba(0, 0, 0, 0.65);
+  border-radius: 12px;
+  padding: 12px 14px;
+  backdrop-filter: blur(16px);
+  animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .nvr-status-bar {
   position: fixed;
   bottom: 0;

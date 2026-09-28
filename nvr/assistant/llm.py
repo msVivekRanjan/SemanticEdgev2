@@ -285,7 +285,6 @@ class RuleBasedNVRProvider(BaseLLMProvider):
                 f"PERIOD        : {data['period']}",
                 f"TOTAL EVENTS  : {data['total_events']}",
                 f"INTRUSIONS    : {data['intrusions']}",
-                f"ATTENDANCE    : {data['attendance']}",
                 "----------------------------------------",
                 "CLASSIFICATION BREAKDOWN:",
             ]

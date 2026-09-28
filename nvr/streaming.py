@@ -5,9 +5,7 @@ The integration layer between Django and Edge AI vision pipelines:
 1. raw_frame_generator: Clean, unmodified video stream without AI overlays for Multi-Camera Grid.
 2. frame_generator: Full YOLOv8 + ByteTrack pipeline with bounding boxes, trajectories,
    and single-snapshot-per-object persistence into DetectionEvent for Review/Explore tabs.
-3. face_recognition_frame_generator: Biometric face detection, reference image matching,
-   and automated AttendanceRecord logging.
-4. object_counter_frame_generator: Industrial conveyor counting line with IN/OUT tally
+3. object_counter_frame_generator: Industrial conveyor counting line with IN/OUT tally
    and PPM throughput analytics.
 """
 
@@ -526,101 +524,7 @@ def frame_generator(camera: "Camera") -> Generator[bytes, None, None]:
                 _stats[camera.pk]["is_streaming"] = False
 
 
-# ── 3. Face Recognition & Biometric Attendance Generator ─────────────────────
-
-def face_recognition_frame_generator(camera: "Camera") -> Generator[bytes, None, None]:
-    """
-    Real-time Face Detection & Recognition generator for College/Enterprise Attendance.
-    Detects faces, matches with user's uploaded FaceReferences, and logs AttendanceRecord.
-    """
-    from nvr.models import AttendanceRecord, FaceReference
-
-    # Load Haar cascade face detector
-    cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    face_cascade = cv2.CascadeClassifier(cascade_path)
-
-    cap = _open_capture(camera.source_url)
-    if cap is None:
-        placeholder = _make_offline_frame(f"{camera.name.upper()} (FACE AI OFFLINE)")
-        while True:
-            yield (
-                b"--frame\r\n"
-                b"Content-Type: image/jpeg\r\n\r\n"
-                + placeholder
-                + b"\r\n"
-            )
-            time.sleep(1.0)
-
-    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-    # Cache user's registered face references
-    user_faces = list(FaceReference.objects.filter(user=camera.owner))
-    logged_today: set[int] = set()
-
-    try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5, minSize=(60, 60))
-
-            for (x, y, w, h) in faces:
-                matched_name = "Unknown Student"
-                matched_id = ""
-                conf_pct = "88%"
-
-                if user_faces:
-                    # Match against first available registered face as demo correlation
-                    ref = user_faces[0]
-                    matched_name = ref.person_name
-                    matched_id = ref.person_id or "ID-VERIFIED"
-                    conf_pct = "96.4%"
-
-                    # Log attendance once per face
-                    if ref.pk not in logged_today:
-                        logged_today.add(ref.pk)
-                        try:
-                            AttendanceRecord.objects.create(
-                                user=camera.owner,
-                                camera=camera,
-                                face_reference=ref,
-                                confidence=0.964,
-                                status="Present",
-                            )
-                        except Exception:
-                            pass
-
-                # Draw glowing biometric box
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 168, 86), 2)
-                # Draw label card
-                label_text = f"{matched_name} [{conf_pct}]"
-                cv2.rectangle(frame, (x, y - 28), (x + w, y), (255, 168, 86), -1)
-                cv2.putText(frame, label_text, (x + 6, y - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (0, 0, 0), 1, cv2.LINE_AA)
-
-            # Draw Attendance HUD
-            cv2.putText(frame, f"BIOMETRIC ATTENDANCE • {len(faces)} FACE(S)", (16, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 168, 86), 1, cv2.LINE_AA)
-
-            ok, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
-            if not ok:
-                continue
-
-            yield (
-                b"--frame\r\n"
-                b"Content-Type: image/jpeg\r\n\r\n"
-                + buffer.tobytes()
-                + b"\r\n"
-            )
-            time.sleep(0.04)
-
-    except GeneratorExit:
-        pass
-    finally:
-        cap.release()
-
-
-# ── 4. Restricted Area Monitoring Frame Generator ────────────────────────────
+# ── 3. Restricted Area Monitoring Frame Generator ────────────────────────────
 
 def restricted_area_frame_generator(camera: "Camera") -> Generator[bytes, None, None]:
     """

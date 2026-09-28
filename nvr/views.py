@@ -41,9 +41,8 @@ from django.views.generic import TemplateView
 from accounts.models import UserServiceProfile
 from src.tracker import Tracker
 from src.draw_utils import draw_box, draw_fps
-from .models import AttendanceRecord, Camera, DetectionEvent, FaceReference, MonitoringZone, ObjectCountRecord
+from .models import Camera, DetectionEvent, MonitoringZone, ObjectCountRecord
 from .streaming import (
-    face_recognition_frame_generator,
     frame_generator,
     get_all_active_stats,
     get_stats,
@@ -117,80 +116,7 @@ class LiveView(LoginRequiredMixin, TemplateView):
         return context
 
 
-# ── 2. Face Recognition & Attendance Module ───────────────────────────────────
-
-class FaceRecognitionView(LoginRequiredMixin, TemplateView):
-    """
-    Face Recognition & Biometric Attendance Tab for Colleges & Institutions.
-    """
-
-    template_name = "nvr/face_recognition.html"
-
-    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        user = self.request.user
-        profile = getattr(user, "service_profile", None)
-        has_access = profile.can_access("face_recognition") if profile else user.is_superuser
-        context["has_service_access"] = has_access
-
-        if not has_access:
-            context["service_key"] = "face_recognition"
-            context["service_title"] = "Face Recognition & Biometric Attendance"
-            context["service_desc"] = (
-                "Automate student and employee attendance logging through live facial recognition matching "
-                "against your uploaded reference directory. All biometric processing runs 100% locally on-premises."
-            )
-            return context
-
-        user_cameras = Camera.objects.filter(owner=user, is_active=True).order_by("id")
-        context["cameras"] = user_cameras
-        selected_cam_id = self.request.GET.get("camera")
-        if selected_cam_id:
-            try:
-                context["selected_camera"] = user_cameras.get(pk=int(selected_cam_id))
-            except (Camera.DoesNotExist, ValueError):
-                context["selected_camera"] = user_cameras.first()
-        else:
-            context["selected_camera"] = user_cameras.first()
-
-        context["face_references"] = FaceReference.objects.filter(user=user).order_by("person_name")
-        context["attendance_logs"] = AttendanceRecord.objects.filter(user=user).order_by("-timestamp")[:50]
-        context["active_tab"] = "face_recognition"
-        return context
-
-    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        profile = getattr(request.user, "service_profile", None)
-        if not (profile and profile.can_access("face_recognition")):
-            messages.error(request, "Service not enabled. Please contact sales to unlock Face Recognition.")
-            return redirect("nvr:face_recognition")
-
-        action = request.POST.get("action")
-        if action == "add_face":
-            name = request.POST.get("person_name", "").strip()
-            person_id = request.POST.get("person_id", "").strip()
-            dept = request.POST.get("department", "").strip()
-            photo = request.FILES.get("photo")
-
-            if name:
-                FaceReference.objects.create(
-                    user=request.user,
-                    person_name=name,
-                    person_id=person_id,
-                    department=dept,
-                    photo=photo,
-                )
-                messages.success(request, f"Reference face profile for '{name}' registered successfully.")
-            else:
-                messages.error(request, "Person name is required.")
-        elif action == "delete_face":
-            face_id = request.POST.get("face_id")
-            FaceReference.objects.filter(pk=face_id, user=request.user).delete()
-            messages.info(request, "Face reference profile deleted.")
-
-        return redirect("nvr:face_recognition")
-
-
-# ── 3. Object Tracker & Restricted Area Monitoring Module ────────────────────
+# ── 2. Object Tracker & Restricted Area Monitoring Module ────────────────────
 
 class ObjectCounterView(LoginRequiredMixin, TemplateView):
     """
@@ -250,115 +176,17 @@ class ObjectCounterView(LoginRequiredMixin, TemplateView):
 RestrictedAreaView = ObjectCounterView
 
 
-# ── 4. Review Tab (Persisted Single-Object Snapshots per User) ─────────────────
+# ── 4. Review Tab — Object Exploration / Search / Historical Detection Discovery ─
 
 class ReviewView(LoginRequiredMixin, TemplateView):
     """
-    Review Tab: Chronological event timeline showing the single image snapshot
-    persisted for each detected object, strictly filtered per user.
+    Review Tab: Full object-exploration experience — search, filter, class grouping,
+    and detection cards. This is the primary historical detection discovery page.
+    Selecting a detection/event from here navigates to the Explore investigation chat.
+    Matches the query/category logic of the original Explore implementation.
     """
 
     template_name = "nvr/review.html"
-
-    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        user = self.request.user
-        user_cameras = Camera.objects.filter(owner=user)
-        context["cameras"] = user_cameras
-
-        camera_filter = self.request.GET.get("camera")
-        class_filter = self.request.GET.get("class")
-        time_filter = self.request.GET.get("time", "24h")
-        track_id_filter = self.request.GET.get("track_id")
-        event_id_filter = self.request.GET.get("event_id")
-
-        qs = DetectionEvent.objects.filter(user=user).select_related("camera")
-        if camera_filter and camera_filter != "all":
-            qs = qs.filter(camera_id=camera_filter)
-        if class_filter and class_filter != "all":
-            qs = qs.filter(class_name__iexact=class_filter)
-        if track_id_filter:
-            qs = qs.filter(track_id=track_id_filter)
-        if event_id_filter:
-            qs = qs.filter(id=event_id_filter)
-
-        db_events = qs.order_by("-created_at")[:120]
-        events = []
-
-        for e in db_events:
-            diff = now() - e.created_at
-            if diff.total_seconds() < 60:
-                rel_time = f"{int(diff.total_seconds())}s ago"
-            elif diff.total_seconds() < 3600:
-                rel_time = f"{int(diff.total_seconds() // 60)}m ago"
-            else:
-                rel_time = f"{int(diff.total_seconds() // 3600)}h ago"
-
-            events.append({
-                "id": e.id,
-                "camera_id": e.camera.pk,
-                "camera_name": e.camera.name,
-                "timestamp": e.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "relative_time": rel_time,
-                "frame_number": str(e.frame_number),
-                "track_id": str(e.track_id),
-                "class": e.class_name.lower(),
-                "confidence": e.confidence,
-                "confidence_pct": f"{e.confidence * 100:.1f}%",
-                "bbox": [e.bbox_x1, e.bbox_y1, e.bbox_x2, e.bbox_y2],
-                "center": ((e.bbox_x1 + e.bbox_x2) / 2, (e.bbox_y1 + e.bbox_y2) / 2),
-                "line_crossing_status": e.line_crossing_status,
-                "description": e.description or "",
-                "snapshot_url": e.snapshot_path,
-            })
-
-        # Fallback sample generator if user hasn't recorded events yet
-        if not events and not user.detections.exists():
-            now_dt = datetime.now()
-            classes = ["person", "car", "bicycle", "truck", "motorcycle", "person"]
-            for i, cls in enumerate(classes):
-                ts = (now_dt - timedelta(minutes=i * 4 + 2)).strftime("%Y-%m-%d %H:%M:%S")
-                events.append({
-                    "id": i + 1,
-                    "camera_id": user_cameras.first().pk if user_cameras.exists() else 1,
-                    "camera_name": user_cameras.first().name if user_cameras.exists() else "Primary Sensor",
-                    "timestamp": ts,
-                    "relative_time": f"{i * 4 + 2}m ago",
-                    "frame_number": f"{1024 - i * 50}",
-                    "track_id": str(i + 1),
-                    "class": cls,
-                    "confidence": 0.88 + (i * 0.02),
-                    "confidence_pct": f"{int((0.88 + (i * 0.02)) * 100)}%",
-                    "bbox": [120, 80, 340, 420],
-                    "center": (230, 250),
-                    "line_crossing_status": "inbound" if i % 2 == 0 else "none",
-                    "description": "",
-                    "snapshot_url": "",
-                })
-
-        context["events"] = events
-        context["total_events"] = len(events)
-        context["selected_camera"] = camera_filter or "all"
-        context["selected_class"] = class_filter or "all"
-        context["selected_time"] = time_filter
-        context["selected_track_id"] = track_id_filter or ""
-        context["selected_event_id"] = event_id_filter or ""
-        context["active_tab"] = "review"
-        return context
-
-
-# ── 5. Explore Tab (Multi-Parameter Search & Description Querying) ─────────────
-
-class ExploreView(LoginRequiredMixin, TemplateView):
-    """
-    Explore Tab: Advanced search combining:
-    - Object Class / Type (Person, Car, Truck, etc.)
-    - DateTime range (datetime_from, datetime_to using datetime-local HTML input)
-    - Camera Filter
-    - Natural-Language Description Keyword / Token Query (Qwen-VL Ready)
-    """
-
-    template_name = "nvr/explore.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context = super().get_context_data(**kwargs)
@@ -371,6 +199,9 @@ class ExploreView(LoginRequiredMixin, TemplateView):
         camera_filter = self.request.GET.get("camera", "all").strip()
         datetime_from = self.request.GET.get("datetime_from", "").strip()
         datetime_to   = self.request.GET.get("datetime_to", "").strip()
+        # Also support the legacy track_id/event_id deep-link from navigate_review actions
+        track_id_filter = self.request.GET.get("track_id", "").strip()
+        event_id_filter = self.request.GET.get("event_id", "").strip()
 
         qs = DetectionEvent.objects.filter(user=user).select_related("camera")
 
@@ -382,7 +213,7 @@ class ExploreView(LoginRequiredMixin, TemplateView):
         if camera_filter and camera_filter.lower() != "all":
             qs = qs.filter(camera_id=camera_filter)
 
-        # 3. DateTime Range — browser sends "YYYY-MM-DDTHH:MM" from datetime-local
+        # 3. DateTime Range
         if datetime_from:
             try:
                 dt_from = datetime.strptime(datetime_from[:16], "%Y-%m-%dT%H:%M")
@@ -396,21 +227,25 @@ class ExploreView(LoginRequiredMixin, TemplateView):
             except ValueError:
                 pass
 
-        # 4. Description & Keyword search (Qwen-VL Ready)
+        # 4. Deep-link: specific track/event filter (from Explore navigate_review actions)
+        if track_id_filter:
+            qs = qs.filter(track_id=track_id_filter)
+        if event_id_filter:
+            qs = qs.filter(id=event_id_filter)
+
+        # 5. Description & Keyword search
         if query:
             q_filter = (
                 Q(class_name__icontains=query)
                 | Q(description__icontains=query)
                 | Q(camera__name__icontains=query)
             )
-            # Token decomposition (e.g. "green shirt person" matches description containing all tokens)
             tokens = query.split()
             if len(tokens) > 1:
                 token_q = Q()
                 for t in tokens:
                     token_q &= (Q(description__icontains=t) | Q(class_name__icontains=t))
                 q_filter |= token_q
-
             qs = qs.filter(q_filter)
 
         total_matched_count = qs.count()
@@ -444,7 +279,6 @@ class ExploreView(LoginRequiredMixin, TemplateView):
             if cls in categories:
                 categories[cls]["items"].append(item_data)
             else:
-                # If custom class, create bucket dynamically
                 if cls not in categories:
                     categories[cls] = {
                         "name": cls.capitalize() + "s",
@@ -474,13 +308,83 @@ class ExploreView(LoginRequiredMixin, TemplateView):
                         "snapshot_url": "",
                     })
 
+        # Provide both flat events and grouped tracked_objects for timeline and test compatibility
+        events_flat = []
+        obj_groups = {}
+        for cat in categories.values():
+            for item in cat["items"]:
+                events_flat.append(item)
+                group_key = (item["class"], item["track_id"], item.get("camera_name"))
+                if group_key not in obj_groups:
+                    obj_groups[group_key] = {
+                        "class": item["class"],
+                        "track_id": item["track_id"],
+                        "camera_name": item["camera_name"],
+                        "latest_event_id": item["id"],
+                        "latest_relative_time": item["relative_time"],
+                        "line_crossing_status": item.get("line_crossing_status", "none"),
+                        "icon": cat.get("icon", "category"),
+                        "color": cat.get("color", "#6d5ef5"),
+                        "events": [],
+                    }
+                obj_groups[group_key]["events"].append(item)
+
+        tracked_objects = list(obj_groups.values())
+
         context["categories"] = categories
+        context["events"] = events_flat
+        context["tracked_objects"] = tracked_objects
         context["total_matches"] = total_matched_count
         context["search_query"] = query
         context["selected_class"] = class_filter
         context["selected_camera"] = camera_filter
         context["datetime_from"] = datetime_from
         context["datetime_to"] = datetime_to
+        context["selected_track_id"] = track_id_filter
+        context["selected_event_id"] = event_id_filter
+        context["deep_link_mode"] = bool(track_id_filter or event_id_filter)
+        context["active_tab"] = "review"
+        return context
+
+
+# ── 5. Explore Tab — Full-Screen Conversational Investigation Workspace ──────────
+
+class ExploreView(LoginRequiredMixin, TemplateView):
+    """
+    Explore Tab: Full-page ChatGPT-style investigation workspace.
+    The page IS the assistant chat — no object grid underneath.
+    Threads are persistent investigation conversations, optionally tied to
+    a specific detection/event. Starting an investigation from Review opens
+    a new or existing thread here.
+    """
+
+    template_name = "nvr/explore.html"
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context["cameras"] = Camera.objects.filter(owner=user)
+
+        # Optional: auto-open a specific event/conversation from Review deep-link
+        context["init_event_id"] = self.request.GET.get("event_id", "")
+        context["init_investigate"] = self.request.GET.get("investigate", "")
+        context["init_conversation_id"] = self.request.GET.get("conversation_id", "")
+
+        # Load existing conversations for the sidebar thread list (server-side seed)
+        service = AssistantService()
+        conversations = service.list_conversations(user, limit=30)
+        context["conversations"] = [
+            {
+                "id": c.id,
+                "title": c.title,
+                "event_id": c.event_id,
+                "camera_name": c.camera.name if c.camera else (c.event.camera.name if c.event else None),
+                "updated_at": c.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "last_message": c.messages.last().content[:80] if c.messages.exists() else "",
+            }
+            for c in conversations
+        ]
+
         context["active_tab"] = "explore"
         return context
 
@@ -850,17 +754,6 @@ class RawStreamView(LoginRequiredMixin, CameraOwnershipMixin, View):
         )
 
 
-class FaceStreamView(LoginRequiredMixin, CameraOwnershipMixin, View):
-    """Serves biometric face detection and matching stream."""
-
-    def get(self, request: HttpRequest, camera_id: int) -> HttpResponse:
-        camera = self.get_camera(camera_id)
-        return StreamingHttpResponse(
-            face_recognition_frame_generator(camera),
-            content_type="multipart/x-mixed-replace; boundary=frame",
-        )
-
-
 class ObjectCounterStreamView(LoginRequiredMixin, CameraOwnershipMixin, View):
     """Serves industrial conveyor counting stream."""
 
@@ -913,6 +806,64 @@ class SystemStatusApiView(LoginRequiredMixin, View):
             "aggregate_fps": round(active_fps, 1) if active_fps > 0 else 30.0,
             "recording": True,
             "health": "OPTIMAL",
+        })
+
+
+class LatestIntrusionsApiView(LoginRequiredMixin, View):
+    """
+    Returns latest restricted-zone intrusion events for real-time audible and visual UI alerts.
+    Filters by owner and line_crossing_status containing 'Intrusion'.
+    Supports optional ?since_id=<int> to return only newly generated intrusion alerts.
+    """
+
+    def get(self, request: HttpRequest) -> JsonResponse:
+        from django.urls import reverse
+        from nvr.models import DetectionEvent
+
+        user = request.user
+        since_id = request.GET.get("since_id")
+        qs = DetectionEvent.objects.filter(
+            camera__owner=user,
+            line_crossing_status__icontains="Intrusion",
+        ).select_related("camera")
+
+        # Determine highest current id
+        current_max_id = DetectionEvent.objects.filter(
+            camera__owner=user,
+            line_crossing_status__icontains="Intrusion",
+        ).order_by("-id").values_list("id", flat=True).first() or 0
+
+        if since_id and since_id.isdigit():
+            qs = qs.filter(id__gt=int(since_id))
+            events = list(qs.order_by("-id")[:5])
+        else:
+            # First request without since_id returns empty alerts list but returns current_max_id
+            # so the client doesn't chime on historical events upon first loading the page
+            events = []
+
+        results = []
+        for ev in events:
+            review_url = f"{reverse('nvr:review')}?class={ev.class_name}&track_id={ev.track_id}&event_id={ev.id}"
+            explore_url = f"{reverse('nvr:explore')}?event_id={ev.id}&investigate=1"
+            results.append({
+                "id": ev.id,
+                "camera_id": ev.camera_id,
+                "camera_name": ev.camera.name,
+                "class_name": ev.class_name,
+                "track_id": ev.track_id,
+                "confidence_pct": f"{int(ev.confidence * 100)}%",
+                "status": ev.line_crossing_status,
+                "description": ev.description or f"{ev.class_name.title()} #{ev.track_id} breached restricted zone",
+                "snapshot_url": ev.snapshot_path,
+                "timestamp": ev.created_at.strftime("%H:%M:%S"),
+                "review_url": review_url,
+                "explore_url": explore_url,
+            })
+
+        return JsonResponse({
+            "success": True,
+            "alerts": results,
+            "max_id": current_max_id,
         })
 
 
@@ -1220,6 +1171,13 @@ class AssistantConversationDetailApiView(LoginRequiredMixin, View):
                 "messages": messages,
             }
         })
+
+    def delete(self, request: HttpRequest, conversation_id: int) -> JsonResponse:
+        service = AssistantService()
+        deleted = service.delete_conversation(conversation_id, request.user)
+        if not deleted:
+            return JsonResponse({"success": False, "error": "Conversation not found or access denied"}, status=404)
+        return JsonResponse({"success": True, "message": "Investigation thread deleted successfully"})
 
 
 class AssistantMessageApiView(LoginRequiredMixin, View):

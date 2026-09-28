@@ -1,194 +1,401 @@
 {% extends "nvr/base_nvr.html" %}
 {% load static %}
 
-{% block title %}Event Review — SemanticEdge NVR{% endblock %}
+{% block title %}Event Review & Object Discovery — SemanticEdge NVR{% endblock %}
+
+{% block container_extra_class %} nvr-content-container--review{% endblock %}
 
 {% block nvr_content %}
-<!-- ── Top Toolbar ────────────────────────────────────────────────────────── -->
-<div class="nvr-toolbar">
-  <div class="nvr-toolbar__title">
-    <span class="material-symbols-outlined" style="color: var(--primary);">history</span>
-    <span>Event Review</span>
-    <span class="nvr-count-chip">{{ total_events }} Events</span>
+<!-- ── 1. Top Search & Filter Bar ────────────────────────────────────────────── -->
+<div class="nvr-toolbar" style="flex-direction: column; gap: 8px; padding: 8px 14px; align-items: stretch; height: auto; margin-bottom: 6px; justify-content: flex-start;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+    <div class="nvr-toolbar__title">
+      <span class="material-symbols-outlined" style="color: var(--primary);">history</span>
+      <span>Event Review &amp; Discovery</span>
+      {% if total_matches > 0 %}
+        <span class="nvr-count-chip" style="background: rgba(109,94,245,0.15); color: var(--primary);">{{ total_matches }} detections</span>
+      {% endif %}
+      {% if tracked_objects %}
+        <span class="nvr-count-chip" style="background: rgba(255,255,255,0.06); color: var(--outline);">{{ tracked_objects|length }} tracked objects</span>
+      {% endif %}
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <a href="{% url 'nvr:explore' %}" class="btn btn--primary btn--sm" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; height: 30px; padding: 0 10px;" title="Open Assistant Investigation Workspace">
+        <span class="material-symbols-outlined" style="font-size: 16px;">forum</span>
+        <span>Investigation Workspace</span>
+      </a>
+      <a href="{% url 'nvr:logs' %}" class="btn btn--ghost btn--sm" style="height: 30px; padding: 0 10px;" title="View live detection and event logs">
+        <span class="material-symbols-outlined" style="font-size: 16px;">receipt_long</span>
+        <span>Live Logs</span>
+      </a>
+    </div>
   </div>
 
-  <!-- Filters -->
-  <form method="get" class="nvr-filter-group">
-    <!-- Camera Filter -->
-    <select name="camera" class="nvr-select" onchange="this.form.submit()">
-      <option value="all" {% if selected_camera == 'all' %}selected{% endif %}>All Cameras</option>
-      {% for cam in cameras %}
-        <option value="{{ cam.id }}" {% if selected_camera == cam.id|stringformat:"s" %}selected{% endif %}>
-          📹 {{ cam.name }}
-        </option>
-      {% endfor %}
-    </select>
+  <!-- Multi-Parameter Search & Filter Form (Tightened flex + grid layout) -->
+  <form method="get" id="review-search-form" style="display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0;">
 
-    <!-- Class Filter -->
-    <select name="class" class="nvr-select" onchange="this.form.submit()">
-      <option value="all" {% if selected_class == 'all' %}selected{% endif %}>All Object Classes</option>
-      <option value="person" {% if selected_class == 'person' %}selected{% endif %}>Person</option>
-      <option value="car" {% if selected_class == 'car' %}selected{% endif %}>Car</option>
-      <option value="bicycle" {% if selected_class == 'bicycle' %}selected{% endif %}>Bicycle</option>
-      <option value="truck" {% if selected_class == 'truck' %}selected{% endif %}>Truck</option>
-      <option value="motorcycle" {% if selected_class == 'motorcycle' %}selected{% endif %}>Motorcycle</option>
-      <option value="bus" {% if selected_class == 'bus' %}selected{% endif %}>Bus</option>
-    </select>
+    <!-- Keyword / Description Query (Full width, zero extra vertical padding) -->
+    <div style="position: relative; width: 100%;">
+      <input
+        type="text"
+        name="q"
+        value="{{ search_query }}"
+        placeholder='Search by object class, or description (e.g. "green shirt person", "delivery truck", "red car")...'
+        class="nvr-search-input"
+        style="width: 100%; height: 32px; font-size: 12px; padding: 4px 10px 4px 34px; box-sizing: border-box;"
+        autocomplete="off"
+      />
+      <span class="material-symbols-outlined" style="position: absolute; left: 9px; top: 7px; font-size: 18px; color: var(--outline); pointer-events: none;">
+        search
+      </span>
+    </div>
 
-    <!-- Time Range Selector -->
-    <select name="time" class="nvr-select" onchange="this.form.submit()">
-      <option value="1h" {% if selected_time == '1h' %}selected{% endif %}>Last 1 Hour</option>
-      <option value="24h" {% if selected_time == '24h' %}selected{% endif %}>Last 24 Hours</option>
-      <option value="7d" {% if selected_time == '7d' %}selected{% endif %}>Last 7 Days</option>
-    </select>
-
-    <a href="{% url 'nvr:review' %}" class="btn btn--ghost btn--sm" title="Clear Filters">Reset</a>
-  </form>
-</div>
-
-{% if selected_track_id or selected_event_id %}
-<!-- ── Semantic Filter Banner from Explore ────────────────────────────────── -->
-<div style="display: flex; gap: 10px; align-items: center; padding: 8px 16px; background: rgba(109,94,245,0.12); border: 1px solid rgba(109,94,245,0.3); border-radius: var(--radius); margin: 0 16px 14px 16px; flex-wrap: wrap;">
-  <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">filter_list</span>
-  <span style="font-size: 12px; font-weight: 600; color: var(--on-surface);">Active Semantic Filter from Explore:</span>
-  {% if selected_track_id %}
-    <span style="background: rgba(160,255,60,0.15); color: #a0ff3c; border: 1px solid rgba(160,255,60,0.3); font-size: 11px; padding: 2px 8px; border-radius: 12px; font-family: var(--font-mono);">
-      Track #{{ selected_track_id }}
-    </span>
-  {% endif %}
-  {% if selected_event_id %}
-    <span style="background: rgba(60,200,255,0.15); color: #3cc8ff; border: 1px solid rgba(60,200,255,0.3); font-size: 11px; padding: 2px 8px; border-radius: 12px; font-family: var(--font-mono);">
-      Event #{{ selected_event_id }}
-    </span>
-  {% endif %}
-  <a href="{% url 'nvr:review' %}" class="btn btn--ghost btn--sm" style="margin-left: auto; font-size: 11px; padding: 2px 8px; height: 24px;">
-    Clear Filter
-  </a>
-</div>
-{% endif %}
-
-<!-- ── Review Workspace Layout ───────────────────────────────────────────── -->
-<div class="nvr-review-layout">
-
-  <!-- Chronological Timeline Gallery -->
-  <div class="nvr-timeline-gallery">
-    {% if events %}
-      {% for event in events %}
-        <div class="nvr-event-card"
-             data-event-id="{{ event.id }}"
-             data-class="{{ event.class }}"
-             data-timestamp="{{ event.timestamp }}"
-             data-camera="{{ event.camera_name }}"
-             data-confidence="{{ event.confidence_pct }}"
-             data-track="{{ event.track_id }}"
-             data-frame="{{ event.frame_number|default:'1' }}"
-             data-snapshot="{{ event.snapshot_url|default:'' }}"
-             data-desc="{{ event.description|default:'' }}"
-             data-bbox-x1="{{ event.bbox.0|default:0 }}"
-             data-bbox-y1="{{ event.bbox.1|default:0 }}"
-             data-bbox-x2="{{ event.bbox.2|default:0 }}"
-             data-bbox-y2="{{ event.bbox.3|default:0 }}"
-             data-line="{{ event.line_crossing_status|default:'none' }}"
-             onclick="openDetailModalFromEl(this)"
-             style="cursor: pointer;">
-          <div class="nvr-event-card__thumbnail">
-            {% if event.snapshot_url %}
-              <img src="{{ event.snapshot_url }}"
-                   alt="Detection event {{ event.class }}"
-                   onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-            {% endif %}
-            <div style="display:{% if event.snapshot_url %}none{% else %}flex{% endif %}; flex-direction:column; align-items:center; gap:6px; color:var(--outline);">
-              <span class="material-symbols-outlined" style="font-size:32px; opacity:0.3;">
-                {% if event.class == 'person' %}person
-                {% elif event.class == 'car' %}directions_car
-                {% elif event.class == 'bicycle' %}pedal_bike
-                {% elif event.class == 'truck' %}local_shipping
-                {% elif event.class == 'motorcycle' %}two_wheeler
-                {% else %}videocam{% endif %}
-              </span>
-              <span style="font-size:11px; font-family:var(--font-mono);">Frame #{{ event.frame_number }}</span>
-            </div>
-
-            <!-- Detection Class Badge -->
-            <div class="nvr-event-card__badge">
-              <span class="class-badge class--{{ event.class|lower }}">
-                <span class="class-dot"></span>
-                {{ event.class }}
-              </span>
-            </div>
-
-            <!-- Relative Time Tag -->
-            <div class="nvr-event-card__time-tag">
-              {{ event.relative_time }}
-            </div>
-          </div>
-
-          <div class="nvr-event-card__body">
-            <div class="nvr-event-card__header">
-              <span class="nvr-event-card__name">{{ event.class }}</span>
-              <span style="font-family:var(--font-mono); font-size:11px; color:var(--primary); font-weight:600;">
-                {{ event.confidence_pct }}
-              </span>
-            </div>
-
-            <div class="nvr-event-card__meta">
-              <span>{{ event.camera_name }}</span>
-              <span>{% if event.track_id != "-1" %}Track #{{ event.track_id }}{% else %}Untracked{% endif %}</span>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-              <span style="font-size: 10px; color: var(--outline); font-family: var(--font-mono);">#{{ event.id }}</span>
-              <a href="{% url 'nvr:explore' %}?event_id={{ event.id }}&investigate=1"
-                 class="btn btn--secondary btn--sm"
-                 style="font-size: 10px; padding: 2px 8px; height: 22px; display: inline-flex; align-items: center; gap: 4px; background: rgba(109,94,245,0.15); border-color: rgba(109,94,245,0.4); color: #fff;"
-                 onclick="event.stopPropagation();"
-                 title="Investigate in Explore Assistant">
-                <span class="material-symbols-outlined" style="font-size: 13px; color: var(--primary);">smart_toy</span>
-                <span>Investigate</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      {% endfor %}
-    {% else %}
-      <div class="empty-state" style="grid-column: 1 / -1;">
-        <span class="material-symbols-outlined">event_busy</span>
-        <h3 class="empty-state__title">No Events Match Selected Filters</h3>
-        <p class="empty-state__body">Try adjusting your camera or object class filters to view recorded detection events.</p>
+    <!-- Filter Controls Row -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; align-items: end;">
+      <!-- Object Class Filter -->
+      <div>
+        <label class="input-label" style="font-size: 10px; margin-bottom: 2px; display: block; color: var(--outline);">Object Class</label>
+        <select name="class" class="nvr-select" style="width: 100%; height: 30px; font-size: 11.5px; padding: 2px 8px;">
+          <option value="all" {% if selected_class == 'all' or not selected_class %}selected{% endif %}>All Object Classes</option>
+          <option value="person" {% if selected_class == 'person' %}selected{% endif %}>🚶 Person</option>
+          <option value="car" {% if selected_class == 'car' %}selected{% endif %}>🚗 Car</option>
+          <option value="truck" {% if selected_class == 'truck' %}selected{% endif %}>🚛 Truck</option>
+          <option value="bicycle" {% if selected_class == 'bicycle' %}selected{% endif %}>🚲 Bicycle</option>
+          <option value="motorcycle" {% if selected_class == 'motorcycle' %}selected{% endif %}>🏍️ Motorcycle</option>
+          <option value="bus" {% if selected_class == 'bus' %}selected{% endif %}>🚌 Bus</option>
+        </select>
       </div>
+
+      <!-- Camera Filter -->
+      <div>
+        <label class="input-label" style="font-size: 10px; margin-bottom: 2px; display: block; color: var(--outline);">Camera Source</label>
+        <select name="camera" class="nvr-select" style="width: 100%; height: 30px; font-size: 11.5px; padding: 2px 8px;">
+          <option value="all" {% if selected_camera == 'all' or not selected_camera %}selected{% endif %}>All Cameras</option>
+          {% for cam in cameras %}
+            <option value="{{ cam.id }}" {% if selected_camera == cam.id|stringformat:"s" %}selected{% endif %}>
+              📹 {{ cam.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- DateTime From -->
+      <div>
+        <label class="input-label" style="font-size: 10px; margin-bottom: 2px; display: block; color: var(--outline);">From Date &amp; Time</label>
+        <input type="datetime-local" name="datetime_from" value="{{ datetime_from }}" class="nvr-select" style="width: 100%; height: 30px; font-size: 11px; padding: 2px 6px;" />
+      </div>
+
+      <!-- DateTime To -->
+      <div>
+        <label class="input-label" style="font-size: 10px; margin-bottom: 2px; display: block; color: var(--outline);">To Date &amp; Time</label>
+        <input type="datetime-local" name="datetime_to" value="{{ datetime_to }}" class="nvr-select" style="width: 100%; height: 30px; font-size: 11px; padding: 2px 6px;" />
+      </div>
+
+      <!-- Search Buttons -->
+      <div style="display: flex; gap: 6px;">
+        <button type="submit" class="btn btn--primary btn--sm" style="flex: 1; height: 30px; white-space: nowrap; font-size: 11.5px; padding: 0 8px;">
+          <span class="material-symbols-outlined" style="font-size: 14px;">search</span>
+          Filter
+        </button>
+        <a href="{% url 'nvr:review' %}" class="btn btn--ghost btn--sm" title="Clear all filters" style="height: 30px; white-space: nowrap; font-size: 11.5px; padding: 0 8px;">
+          <span class="material-symbols-outlined" style="font-size: 14px;">filter_alt_off</span>
+          Reset
+        </a>
+      </div>
+    </div>
+
+  </form>
+
+  <!-- Active Filter Indicators -->
+  {% if search_query or datetime_from or datetime_to or selected_class != 'all' and selected_class or selected_camera != 'all' and selected_camera %}
+  <div style="display: flex; flex-wrap: wrap; gap: 6px; padding-top: 2px;">
+    <span style="font-size: 10px; color: var(--outline); padding: 1px 0; align-self: center;">Active filters:</span>
+    {% if search_query %}
+      <span style="background: rgba(109,94,245,0.2); color: var(--primary); font-size: 10.5px; padding: 1px 7px; border-radius: 12px; border: 1px solid rgba(109,94,245,0.3);">
+        "{{ search_query }}"
+      </span>
+    {% endif %}
+    {% if selected_class and selected_class != 'all' %}
+      <span style="background: rgba(160,255,60,0.15); color: #a0ff3c; font-size: 10.5px; padding: 1px 7px; border-radius: 12px; border: 1px solid rgba(160,255,60,0.3);">
+        Class: {{ selected_class }}
+      </span>
+    {% endif %}
+    {% if datetime_from %}
+      <span style="background: rgba(60,200,255,0.15); color: #3cc8ff; font-size: 10.5px; padding: 1px 7px; border-radius: 12px; border: 1px solid rgba(60,200,255,0.3);">
+        From: {{ datetime_from }}
+      </span>
+    {% endif %}
+    {% if datetime_to %}
+      <span style="background: rgba(255,168,86,0.15); color: var(--tertiary); font-size: 10.5px; padding: 1px 7px; border-radius: 12px; border: 1px solid rgba(255,168,86,0.3);">
+        To: {{ datetime_to }}
+      </span>
     {% endif %}
   </div>
+  {% endif %}
 
-  <!-- Right-Side Vertical Time Density Strip -->
-  <aside class="nvr-density-timeline">
-    <div class="nvr-density-timeline__title">Time Navigation</div>
-    <div style="display: flex; flex-direction: column; gap: 4px;">
-      <a href="?time=1h" class="nvr-density-slot" style="text-decoration:none;">
-        <span>Past 1h</span>
-        <div class="nvr-density-bar" style="width: 45px;"></div>
-      </a>
-      <a href="?time=2h" class="nvr-density-slot" style="text-decoration:none;">
-        <span>1h - 2h</span>
-        <div class="nvr-density-bar" style="width: 32px;"></div>
-      </a>
-      <a href="?time=4h" class="nvr-density-slot" style="text-decoration:none;">
-        <span>2h - 4h</span>
-        <div class="nvr-density-bar" style="width: 60px;"></div>
-      </a>
-      <a href="?time=8h" class="nvr-density-slot" style="text-decoration:none;">
-        <span>4h - 8h</span>
-        <div class="nvr-density-bar" style="width: 20px;"></div>
-      </a>
-      <a href="?time=24h" class="nvr-density-slot" style="text-decoration:none;">
-        <span>8h - 24h</span>
-        <div class="nvr-density-bar" style="width: 80px;"></div>
-      </a>
-    </div>
-
-    <div style="margin-top: 20px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; color: var(--outline);">
-      Click any event card to view full bounding box &amp; trajectory metadata.
-    </div>
-  </aside>
-
+  <!-- Deep Link Banner -->
+  {% if selected_track_id or selected_event_id %}
+  <div style="display: flex; gap: 8px; align-items: center; padding: 4px 10px; background: rgba(109,94,245,0.12); border: 1px solid rgba(109,94,245,0.3); border-radius: var(--radius); flex-wrap: wrap;">
+    <span class="material-symbols-outlined" style="font-size: 15px; color: var(--primary);">link</span>
+    <span style="font-size: 10.5px; font-weight: 600; color: var(--on-surface);">Deep-link filter:</span>
+    {% if selected_track_id %}
+      <span style="background: rgba(160,255,60,0.15); color: #a0ff3c; border: 1px solid rgba(160,255,60,0.3); font-size: 10.5px; padding: 1px 6px; border-radius: 8px; font-family: var(--font-mono);">
+        Track #{{ selected_track_id }}
+      </span>
+    {% endif %}
+    {% if selected_event_id %}
+      <span style="background: rgba(60,200,255,0.15); color: #3cc8ff; border: 1px solid rgba(60,200,255,0.3); font-size: 10.5px; padding: 1px 6px; border-radius: 8px; font-family: var(--font-mono);">
+        Event #{{ selected_event_id }}
+      </span>
+    {% endif %}
+    <a href="{% url 'nvr:review' %}" class="btn btn--ghost btn--sm" style="margin-left: auto; font-size: 10px; padding: 1px 6px; height: 20px;">
+      Clear Filter
+    </a>
+  </div>
+  {% endif %}
 </div>
+
+<!-- ── 2. Object Categories Discovery Grid ─────────────────────────────────── -->
+<div style="padding: 4px 14px 16px 14px; overflow-y: auto; flex: 1;">
+  {% for key, cat in categories.items %}
+    {% if cat.items %}
+    <section class="nvr-explore-section" style="margin-bottom: 16px;">
+      <div class="nvr-explore-section__header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+        <div class="nvr-explore-section__title" style="display: flex; align-items: center; gap: 8px;">
+          <span class="material-symbols-outlined" style="color: {{ cat.color }}; font-size: 18px;">{{ cat.icon }}</span>
+          <span style="font-size: 14px; font-weight: 700; color: var(--on-surface);">{{ cat.name }}</span>
+          <span class="nvr-count-chip" style="font-size: 9.5px; background: rgba(255,255,255,0.06); padding: 1px 6px;">{{ cat.items|length }} detected</span>
+        </div>
+        {% if selected_class and selected_class != 'all' and selected_class == key %}
+          <a href="{% url 'nvr:review' %}" class="btn btn--ghost btn--sm" style="font-size: 11px; height: 26px; padding: 0 8px; display: inline-flex; align-items: center; gap: 4px; color: var(--primary);" title="Show all object categories">
+            <span class="material-symbols-outlined" style="font-size: 14px;">arrow_back</span>
+            <span>Show All Categories</span>
+          </a>
+        {% else %}
+          <a href="{% url 'nvr:review' %}?class={{ key }}" class="text-link text-link--muted" style="font-size: 11px; display: flex; align-items: center; gap: 2px;" title="View all cards for {{ cat.name }} in full grid">
+            <span>Filter all {{ cat.name }}</span>
+            <span class="material-symbols-outlined" style="font-size: 13px;">arrow_forward</span>
+          </a>
+        {% endif %}
+      </div>
+
+      <!-- If filtered by class, show all cards in full responsive grid; otherwise horizontal carousel -->
+      {% if selected_class and selected_class != 'all' and selected_class == key %}
+      <div class="nvr-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 10px; padding-bottom: 8px;">
+      {% else %}
+      <div class="nvr-horizontal-strip" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;">
+      {% endif %}
+        {% for item in cat.items %}
+          <div class="nvr-object-card"
+               data-event-id="{{ item.id }}"
+               data-class="{{ item.class }}"
+               data-timestamp="{{ item.timestamp }}"
+               data-camera="{{ item.camera_name }}"
+               data-confidence="{{ item.confidence_pct }}"
+               data-track="{{ item.track_id }}"
+               data-frame="{{ item.frame_number|default:'1' }}"
+               data-snapshot="{{ item.snapshot_url|default:'' }}"
+               data-desc="{{ item.description|default:'' }}"
+               data-bbox-x1="{{ item.bbox.0|default:0 }}"
+               data-bbox-y1="{{ item.bbox.1|default:0 }}"
+               data-bbox-x2="{{ item.bbox.2|default:0 }}"
+               data-bbox-y2="{{ item.bbox.3|default:0 }}"
+               data-line="{{ item.line_crossing_status|default:'none' }}"
+               onclick="openDetailModalFromEl(this)"
+               title="Click card to inspect metadata and snapshot"
+               style="{% if selected_class and selected_class != 'all' and selected_class == key %}width: 100%;{% else %}flex: 0 0 215px;{% endif %} background: var(--surface-container); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;">
+
+            <!-- Thumbnail Preview -->
+            <div class="nvr-object-card__preview" style="position: relative; width: 100%; height: 125px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+              {% if item.snapshot_url %}
+                <img src="{{ item.snapshot_url }}"
+                     alt="{{ cat.name }} snapshot"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                     style="width: 100%; height: 100%; object-fit: cover;" />
+              {% endif %}
+              <div style="display:{% if item.snapshot_url %}none{% else %}flex{% endif %}; flex-direction:column; align-items:center; color:var(--outline); gap:4px;">
+                <span class="material-symbols-outlined" style="font-size: 30px; opacity:0.35;">{{ cat.icon }}</span>
+                <span style="font-size: 10px; font-family:var(--font-mono);">Track #{{ item.track_id|default:"?" }}</span>
+              </div>
+
+              <!-- Confidence badge -->
+              <div style="position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-family: var(--font-mono); color: var(--primary);">
+                {{ item.confidence_pct|default:"90%" }}
+              </div>
+
+              <!-- Line crossing tag -->
+              {% if item.line_crossing_status and item.line_crossing_status != "none" %}
+                <div style="position: absolute; top: 6px; left: 6px; background: rgba(255,60,60,0.85); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-family: var(--font-mono);">
+                  {{ item.line_crossing_status }}
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Card Info -->
+            <div class="nvr-object-card__info" style="padding: 8px 10px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 600; color: var(--on-surface); margin-bottom: 2px;">
+                  <span>{{ item.class|title }} #{{ item.track_id|default:"?" }}</span>
+                  <span style="color: var(--outline); font-size: 10.5px; font-family: var(--font-mono);">{{ item.relative_time }}</span>
+                </div>
+                <p style="font-size: 10.5px; color: var(--outline); font-family: var(--font-mono); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  {{ item.camera_name }}
+                </p>
+                {% if item.description %}
+                  <p style="font-size: 10px; color: var(--on-surface-variant); margin: 2px 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic;">
+                    "{{ item.description|truncatechars:36 }}"
+                  </p>
+                {% endif %}
+              </div>
+
+              <!-- Actions: Investigate (opens Explore with context) -->
+              <div style="display: flex; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
+                <a href="{% url 'nvr:explore' %}?event_id={{ item.id }}&investigate=1"
+                   class="btn btn--primary btn--sm"
+                   onclick="event.stopPropagation();"
+                   style="width: 100%; font-size: 11px; padding: 4px 6px; display: flex; align-items: center; justify-content: center; gap: 5px; text-decoration: none;"
+                   title="Investigate this detection in Explore Chat Workspace">
+                  <span class="material-symbols-outlined" style="font-size: 14px;">forum</span>
+                  <span>Investigate</span>
+                </a>
+              </div>
+            </div>
+
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  {% endfor %}
+
+  <!-- Empty state -->
+  {% if total_matches == 0 %}
+    <div class="empty-state" style="margin: 40px auto; max-width: 500px; text-align: center; padding: 40px 20px;">
+      <span class="material-symbols-outlined" style="font-size: 48px; color: var(--outline); opacity: 0.4;">search_off</span>
+      <h3 style="font-size: 16px; margin: 12px 0 6px 0; color: var(--on-surface);">No Detections Found</h3>
+      <p style="font-size: 13px; color: var(--outline); margin-bottom: 16px;">
+        No events match the selected filters{% if search_query %} for "{{ search_query }}"{% endif %}.
+      </p>
+      <a href="{% url 'nvr:review' %}" class="btn btn--secondary btn--sm">Clear All Filters</a>
+    </div>
+  {% endif %}
+</div>
+
+<!-- ── 3. Detection Details Modal ──────────────────────────────────────────── -->
+<div id="detection-detail-modal" class="nvr-modal" aria-hidden="true" style="display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 16px;">
+  <div class="nvr-modal__content" style="background: var(--surface-container); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; width: 560px; max-width: 95vw; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+    <!-- Modal Header -->
+    <div style="padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="material-symbols-outlined" style="color: var(--primary); font-size: 20px;">info</span>
+        <span id="modal-title" style="font-size: 14px; font-weight: 700; color: var(--on-surface);">Detection Details</span>
+      </div>
+      <button type="button" class="btn btn--ghost btn--sm" onclick="closeDetailModal()" style="padding: 4px;">
+        <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div style="padding: 16px; max-height: 70vh; overflow-y: auto;">
+      <!-- Snapshot preview -->
+      <div id="modal-img-container" style="position: relative; width: 100%; height: 220px; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 14px; display: flex; align-items: center; justify-content: center;">
+        <img id="modal-img" src="" alt="Snapshot" style="width: 100%; height: 100%; object-fit: contain;" />
+        <div id="modal-img-placeholder" style="display: none; flex-direction: column; align-items: center; gap: 6px; color: var(--outline);">
+          <span class="material-symbols-outlined" style="font-size: 40px; opacity: 0.3;">photo_camera</span>
+          <span style="font-size: 11px;">Snapshot not available</span>
+        </div>
+      </div>
+
+      <!-- Metadata Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+          <span style="color: var(--outline); font-size: 10px; display: block;">Camera</span>
+          <strong id="modal-camera" style="color: var(--on-surface);">-</strong>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+          <span style="color: var(--outline); font-size: 10px; display: block;">Timestamp</span>
+          <strong id="modal-timestamp" style="color: var(--on-surface); font-family: var(--font-mono);">-</strong>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+          <span style="color: var(--outline); font-size: 10px; display: block;">Track ID &amp; Confidence</span>
+          <strong id="modal-track-conf" style="color: var(--on-surface); font-family: var(--font-mono);">-</strong>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+          <span style="color: var(--outline); font-size: 10px; display: block;">Line Crossing</span>
+          <strong id="modal-line" style="color: var(--on-surface);">-</strong>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div style="margin-top: 10px; background: rgba(255,255,255,0.03); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+        <span style="color: var(--outline); font-size: 10px; display: block;">Description / AI Label</span>
+        <span id="modal-desc" style="color: var(--on-surface); font-style: italic; font-size: 11px;">None</span>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div style="padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: flex-end; gap: 8px;">
+      <button type="button" class="btn btn--ghost btn--sm" onclick="closeDetailModal()">Close</button>
+      <a id="modal-investigate-link" href="#" class="btn btn--primary btn--sm" style="display: flex; align-items: center; gap: 5px;">
+        <span class="material-symbols-outlined" style="font-size: 15px;">forum</span>
+        <span>Investigate</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+function openDetailModalFromEl(card) {
+  if (!card) return;
+  const ds = card.dataset || {};
+  const modal = document.getElementById('detection-detail-modal');
+  const img = document.getElementById('modal-img');
+  const placeholder = document.getElementById('modal-img-placeholder');
+
+  document.getElementById('modal-title').textContent = `${(ds.class || 'Object').toUpperCase()} #${ds.track || '?'}`;
+  document.getElementById('modal-camera').textContent = ds.camera || 'Camera';
+  document.getElementById('modal-timestamp').textContent = ds.timestamp || '-';
+  document.getElementById('modal-track-conf').textContent = `Track #${ds.track || '?'} • ${ds.confidence || 'N/A'}`;
+  document.getElementById('modal-line').textContent = ds.line || 'none';
+  document.getElementById('modal-desc').textContent = ds.desc || 'No description recorded';
+
+  if (ds.snapshot) {
+    img.src = ds.snapshot;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    placeholder.style.display = 'flex';
+  }
+
+  const investigateLink = document.getElementById('modal-investigate-link');
+  if (ds.eventId) {
+    investigateLink.href = `/nvr/explore/?event_id=${encodeURIComponent(ds.eventId)}&investigate=1`;
+    investigateLink.style.display = 'flex';
+  } else {
+    investigateLink.style.display = 'none';
+  }
+
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeDetailModal() {
+  const modal = document.getElementById('detection-detail-modal');
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeDetailModal();
+});
+</script>
+
+<style>
+.nvr-object-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(109, 94, 245, 0.5) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+</style>
 {% endblock %}

@@ -28,6 +28,6 @@ admin.site.register(User, UserAdmin)
 
 @admin.register(UserServiceProfile)
 class UserServiceProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "has_vehicles_people", "has_face_recognition", "has_object_count", "updated_at")
-    list_filter = ("has_vehicles_people", "has_face_recognition", "has_object_count")
+    list_display = ("user", "has_vehicles_people", "has_object_count", "updated_at")
+    list_filter = ("has_vehicles_people", "has_object_count")
     search_fields = ("user__username", "user__email")

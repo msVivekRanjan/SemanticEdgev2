@@ -1,650 +1,957 @@
 {% extends "nvr/base_nvr.html" %}
 {% load static %}
 
-{% block title %}Explore Detections — SemanticEdge NVR{% endblock %}
+{% block title %}Investigation Workspace — SemanticEdge NVR{% endblock %}
+
+{% block workspace_extra_class %} nvr-main-workspace--explore{% endblock %}
+{% block container_extra_class %} nvr-content-container--explore{% endblock %}
 
 {% block nvr_content %}
-<!-- ── Top Search & Filter Bar ────────────────────────────────────────────── -->
-<div class="nvr-toolbar" style="flex-direction: column; gap: 10px; padding: 14px 16px; align-items: stretch; height: auto;">
-  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-    <div class="nvr-toolbar__title">
-      <span class="material-symbols-outlined" style="color: var(--primary);">travel_explore</span>
-      <span>Object Exploration</span>
-      {% if total_matches > 0 %}
-        <span class="nvr-count-chip" style="background: rgba(109,94,245,0.15);">{{ total_matches }} results</span>
-      {% endif %}
-    </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <button id="btn-toggle-assistant" type="button" class="btn btn--secondary btn--sm" style="display: flex; align-items: center; gap: 6px; background: rgba(109,94,245,0.18); border: 1px solid var(--primary); color: #fff;">
-        <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">smart_toy</span>
-        <span>Security Assistant</span>
-        <span id="assistant-badge" class="badge" style="background: var(--primary); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px;">Ready</span>
-      </button>
-      <a href="{% url 'nvr:logs' %}" class="btn btn--ghost btn--sm" title="View live detection and event logs">
-        <span class="material-symbols-outlined" style="font-size: 16px;">receipt_long</span>
-        <span>View Live Logs</span>
-      </a>
-    </div>
-  </div>
+<div class="investigation-workspace">
 
-  <!-- Advanced Multi-Parameter Search Form -->
-  <form method="get" id="explore-search-form" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: end;">
-
-    <!-- Keyword / Description Query -->
-    <div style="grid-column: 1 / -1; position: relative;">
-      <input
-        type="text"
-        name="q"
-        value="{{ search_query }}"
-        placeholder='Search by object type, or description (e.g. "green shirt person", "red sedan")...'
-        class="nvr-search-input"
-        style="width: 100%; padding-left: 36px;"
-        autocomplete="off"
-      />
-      <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 10px; font-size: 18px; color: var(--outline);">
-        search
-      </span>
-    </div>
-
-    <!-- Object Class Filter -->
-    <div>
-      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Object Class</label>
-      <select name="class" class="nvr-select" style="width: 100%; font-size: 12px;">
-        <option value="all" {% if selected_class == 'all' %}selected{% endif %}>All Classes</option>
-        <option value="person" {% if selected_class == 'person' %}selected{% endif %}>🚶 Person</option>
-        <option value="car" {% if selected_class == 'car' %}selected{% endif %}>🚗 Car</option>
-        <option value="truck" {% if selected_class == 'truck' %}selected{% endif %}>🚛 Truck</option>
-        <option value="bicycle" {% if selected_class == 'bicycle' %}selected{% endif %}>🚲 Bicycle</option>
-        <option value="motorcycle" {% if selected_class == 'motorcycle' %}selected{% endif %}>🏍️ Motorcycle</option>
-        <option value="bus" {% if selected_class == 'bus' %}selected{% endif %}>🚌 Bus</option>
-      </select>
-    </div>
-
-    <!-- Camera Filter -->
-    <div>
-      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">Camera Source</label>
-      <select name="camera" class="nvr-select" style="width: 100%; font-size: 12px;">
-        <option value="all" {% if selected_camera == 'all' %}selected{% endif %}>All Cameras</option>
-        {% for cam in cameras %}
-          <option value="{{ cam.id }}" {% if selected_camera == cam.id|stringformat:"s" %}selected{% endif %}>
-            📹 {{ cam.name }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <!-- DateTime From (combined Date + Time in one box) -->
-    <div>
-      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">From Date &amp; Time</label>
-      <input type="datetime-local" name="datetime_from" value="{{ datetime_from }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
-    </div>
-
-    <!-- DateTime To (combined Date + Time in one box) -->
-    <div>
-      <label class="input-label" style="font-size: 10px; margin-bottom: 3px; display: block;">To Date &amp; Time</label>
-      <input type="datetime-local" name="datetime_to" value="{{ datetime_to }}" class="nvr-select" style="width: 100%; font-size: 12px;" />
-    </div>
-
-    <!-- Search Action Buttons -->
-    <div style="display: flex; gap: 6px;">
-      <button type="submit" class="btn btn--primary btn--sm" style="flex: 1; white-space: nowrap; font-size: 12px;">
-        <span class="material-symbols-outlined" style="font-size: 14px;">search</span>
-        Search
-      </button>
-      <a href="{% url 'nvr:explore' %}" class="btn btn--ghost btn--sm" title="Clear all filters" style="white-space: nowrap; font-size: 12px;">
-        <span class="material-symbols-outlined" style="font-size: 14px;">filter_alt_off</span>
-        Clear
-      </a>
-    </div>
-
-  </form>
-
-
-  <!-- Active Filter Chips (visual indicators) -->
-  {% if search_query or datetime_from or datetime_to or selected_class != 'all' or selected_camera != 'all' %}
-  <div style="display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px;">
-    <span style="font-size: 10px; color: var(--outline); padding: 2px 0; align-self: center;">Active filters:</span>
-    {% if search_query %}
-      <span style="background: rgba(109,94,245,0.2); color: var(--primary); font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(109,94,245,0.3);">
-        "{{ search_query }}"
-      </span>
-    {% endif %}
-    {% if selected_class != 'all' %}
-      <span style="background: rgba(160,255,60,0.15); color: #a0ff3c; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(160,255,60,0.3);">
-        Class: {{ selected_class }}
-      </span>
-    {% endif %}
-    {% if datetime_from %}
-      <span style="background: rgba(60,200,255,0.15); color: #3cc8ff; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(60,200,255,0.3);">
-        From: {{ datetime_from }}
-      </span>
-    {% endif %}
-    {% if datetime_to %}
-      <span style="background: rgba(255,168,86,0.15); color: var(--tertiary); font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(255,168,86,0.3);">
-        To: {{ datetime_to }}
-      </span>
-    {% endif %}
-  </div>
-  {% endif %}
-</div>
-
-<!-- ── Object Categories Gallery (Horizontal Strips) ─────────────────────── -->
-<div style="padding: 0 4px;">
-  {% for key, cat in categories.items %}
-    {% if cat.items %}
-    <section class="nvr-explore-section">
-      <div class="nvr-explore-section__header">
-        <div class="nvr-explore-section__title">
-          <span class="material-symbols-outlined" style="color: {{ cat.color }};font-size:18px;">{{ cat.icon }}</span>
-          <span>{{ cat.name }}</span>
-          <span class="nvr-count-chip">{{ cat.items|length }} Detected</span>
+  <!-- ── 1. Left Sidebar: Investigation Threads ────────────────────────────── -->
+  <aside class="threads-sidebar">
+    <div class="threads-sidebar__header">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="material-symbols-outlined" style="color: var(--primary); font-size: 20px;">forum</span>
+          <span style="font-weight: 700; font-size: 14px; color: var(--on-surface);">Investigations</span>
         </div>
-        <a href="{% url 'nvr:review' %}?class={{ key }}" class="text-link text-link--muted" style="font-size: 11px;">
-          View All {{ cat.name }} →
-        </a>
+        <span id="thread-count-badge" class="nvr-count-chip" style="font-size: 10px; background: rgba(255,255,255,0.06);">
+          {{ conversations|length }}
+        </span>
       </div>
 
-      <!-- Horizontal Thumbnail Strip -->
-      <div class="nvr-horizontal-strip">
-        {% for item in cat.items %}
-          <div class="nvr-object-card"
-               data-event-id="{{ item.id }}"
-               data-class="{{ item.class }}"
-               data-timestamp="{{ item.timestamp }}"
-               data-camera="{{ item.camera_name }}"
-               data-confidence="{{ item.confidence_pct }}"
-               data-track="{{ item.track_id }}"
-               data-frame="{{ item.frame_number|default:'1' }}"
-               data-snapshot="{{ item.snapshot_url|default:'' }}"
-               data-desc="{{ item.description|default:'' }}"
-               data-bbox-x1="{{ item.bbox.0|default:0 }}"
-               data-bbox-y1="{{ item.bbox.1|default:0 }}"
-               data-bbox-x2="{{ item.bbox.2|default:0 }}"
-               data-bbox-y2="{{ item.bbox.3|default:0 }}"
-               data-line="{{ item.line_crossing_status|default:'none' }}"
-               onclick="openDetailModalFromEl(this)"
-               style="cursor: pointer;">
-            <div class="nvr-object-card__preview">
-              {% if item.snapshot_url %}
-                <img src="{{ item.snapshot_url }}"
-                     alt="{{ cat.name }} preview"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                     style="width: 100%; height: 100%; object-fit: cover;" />
-              {% endif %}
-              <div style="display:{% if item.snapshot_url %}none{% else %}flex{% endif %}; flex-direction:column; align-items:center; color:var(--outline); gap:4px;">
-                <span class="material-symbols-outlined" style="font-size: 28px; opacity:0.35;">{{ cat.icon }}</span>
-                <span style="font-size: 10px; font-family:var(--font-mono);">#{{ item.track_id|default:"1" }}</span>
-              </div>
+      <!-- New Investigation Button -->
+      <button type="button" id="btn-new-thread" class="btn btn--primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 8px 12px; border-radius: 8px;">
+        <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+        <span>New Investigation</span>
+      </button>
 
-              <!-- Confidence pill -->
-              <div style="position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-family: var(--font-mono); color: var(--primary);">
-                {{ item.confidence_pct|default:"94%" }}
-              </div>
-            </div>
+      <!-- Thread Search Input -->
+      <div style="margin-top: 10px; position: relative;">
+        <input
+          type="text"
+          id="thread-search-input"
+          placeholder="Filter threads..."
+          class="nvr-search-input"
+          style="width: 100%; font-size: 11px; padding: 6px 10px 6px 28px; border-radius: 6px;"
+          autocomplete="off"
+        />
+        <span class="material-symbols-outlined" style="position: absolute; left: 8px; top: 7px; font-size: 14px; color: var(--outline);">
+          search
+        </span>
+      </div>
+    </div>
 
-            <div class="nvr-object-card__info">
-              <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--on-surface); margin-bottom: 2px;">
-                <span>{{ cat.name|slice:":-1"|default:cat.name }}</span>
-                <span style="color: var(--outline); font-size: 11px; font-family: var(--font-mono);">{{ item.relative_time }}</span>
-              </div>
-              <p style="font-size: 11px; color: var(--outline); font-family: var(--font-mono); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                {{ item.camera_name }}
-              </p>
-              {% if item.description %}
-                <p style="font-size: 10px; color: var(--on-surface-variant); margin: 2px 0 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic;">
-                  "{{ item.description|truncatechars:40 }}"
-                </p>
-              {% endif %}
-
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-                <a href="{% url 'nvr:review' %}?class={{ item.class }}&track_id={{ item.track_id }}&event_id={{ item.id }}"
-                   class="text-link text-link--muted"
-                   style="font-size: 10px; display: flex; align-items: center; gap: 2px;"
-                   onclick="event.stopPropagation();"
-                   title="View in Review timeline">
-                  <span>Review</span>
-                  <span class="material-symbols-outlined" style="font-size: 11px;">arrow_forward</span>
-                </a>
-                <button type="button"
-                        class="btn btn--ghost btn--sm"
-                        style="font-size: 10px; padding: 2px 6px; height: 20px; color: var(--primary);"
-                        onclick="event.stopPropagation(); openAssistantForCard(this);"
-                        data-event-id="{{ item.id }}"
-                        data-class="{{ item.class }}"
-                        data-track="{{ item.track_id }}"
-                        data-camera="{{ item.camera_name }}"
-                        title="Start assistant investigation">
-                  <span class="material-symbols-outlined" style="font-size: 12px;">smart_toy</span>
-                  <span>Investigate</span>
-                </button>
-              </div>
+    <!-- Threads Scroll List -->
+    <div id="threads-list" class="threads-list">
+      {% for conv in conversations %}
+        <div class="thread-item {% if forloop.first and not init_event_id and not init_conversation_id %}thread-item--active{% endif %}"
+             data-thread-id="{{ conv.id }}"
+             data-event-id="{{ conv.event_id|default:'' }}"
+             onclick="selectThread('{{ conv.id }}')">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 4px;">
+            <span class="thread-item__title">{{ conv.title }}</span>
+            <div style="display: flex; align-items: center; gap: 2px; flex-shrink: 0;">
+              <span class="thread-item__time">{{ conv.updated_at|slice:"11:16" }}</span>
+              <button type="button"
+                      class="thread-delete-btn"
+                      data-thread-id="{{ conv.id }}"
+                      data-thread-title="{{ conv.title }}"
+                      onclick="event.stopPropagation(); confirmDeleteThread('{{ conv.id }}', '{{ conv.title|escapejs }}')"
+                      title="Delete investigation thread">
+                <span class="material-symbols-outlined" style="font-size: 14px;">delete</span>
+              </button>
             </div>
           </div>
-        {% endfor %}
-      </div>
-    </section>
-    {% endif %}
-  {% endfor %}
-
-  {% if total_matches == 0 and search_query %}
-    <div class="empty-state" style="margin-top: 40px;">
-      <span class="material-symbols-outlined" style="font-size: 48px; color: var(--outline);">search_off</span>
-      <h3 class="empty-state__title">No Results Found</h3>
-      <p class="empty-state__body">
-        No detections match "<strong>{{ search_query }}</strong>"{% if date_from %} from {{ date_from }}{% endif %}{% if date_to %} to {{ date_to }}{% endif %}.
-        <br>Try broadening your search or <a href="{% url 'nvr:explore' %}" style="color: var(--primary);">clearing all filters</a>.
-      </p>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+            {% if conv.event_id %}
+              <span class="thread-item__tag" style="background: rgba(109,94,245,0.18); color: var(--primary);">
+                Event #{{ conv.event_id }}
+              </span>
+            {% else %}
+              <span class="thread-item__tag" style="background: rgba(255,255,255,0.06); color: var(--outline);">
+                General
+              </span>
+            {% endif %}
+            {% if conv.camera_name %}
+              <span class="thread-item__cam">{{ conv.camera_name }}</span>
+            {% endif %}
+          </div>
+          {% if conv.last_message %}
+            <p class="thread-item__preview">{{ conv.last_message }}</p>
+          {% endif %}
+        </div>
+      {% empty %}
+        <div id="threads-empty-hint" style="padding: 24px 16px; text-align: center; color: var(--outline); font-size: 12px;">
+          <span class="material-symbols-outlined" style="font-size: 28px; opacity: 0.35; margin-bottom: 6px;">chat_bubble_outline</span>
+          <p style="margin: 0;">No investigations yet.<br>Click <strong>+ New Investigation</strong> or investigate an object from Review.</p>
+        </div>
+      {% endfor %}
     </div>
-  {% endif %}
+
+    <!-- Bottom Navigation Shortcut to Review -->
+    <div class="threads-sidebar__footer">
+      <a href="{% url 'nvr:review' %}" class="btn btn--ghost btn--sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px;">
+        <span class="material-symbols-outlined" style="font-size: 14px;">manage_search</span>
+        <span>Browse Detections in Review &rarr;</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ── 2. Main Investigation Workspace (ChatGPT-style) ──────────────────── -->
+  <main class="chat-workspace">
+
+    <!-- Workspace Header -->
+    <header class="chat-workspace__header">
+      <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+        <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(109, 94, 245, 0.15); border: 1px solid rgba(109, 94, 245, 0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">smart_toy</span>
+        </div>
+        <div style="overflow: hidden;">
+          <h2 id="current-thread-title" style="font-size: 14px; font-weight: 700; color: var(--on-surface); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            Surveillance Assistant
+          </h2>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--outline); font-family: var(--font-mono);">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #4caf50;"></span>
+            <span>Internal Intelligence Engine</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <a href="{% url 'nvr:review' %}" class="btn btn--secondary btn--sm" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+          <span class="material-symbols-outlined" style="font-size: 14px;">history</span>
+          <span>Event Review</span>
+        </a>
+        <a href="{% url 'nvr:logs' %}" class="btn btn--ghost btn--sm" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+          <span class="material-symbols-outlined" style="font-size: 14px;">receipt_long</span>
+          <span>View Live Logs</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Attached Event Context Banner -->
+    <div id="active-context-banner" class="context-banner" style="display: none;">
+      <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+        <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">my_location</span>
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <span id="context-banner-title" style="font-size: 13.5px; font-weight: 600; color: #fff;">Focusing on Object</span>
+          <span id="context-banner-meta" style="font-size: 12px; color: var(--outline); margin-left: 6px; font-family: var(--font-mono);"></span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <a id="context-review-btn" href="#" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 2px 8px; height: 24px; color: var(--primary);" title="Open in Event Review">
+          <span>Review Timeline</span>
+          <span class="material-symbols-outlined" style="font-size: 12px;">arrow_forward</span>
+        </a>
+        <button type="button" id="btn-detach-context" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 2px 6px; height: 24px; color: var(--outline);" title="Detach event context and switch to general surveillance queries">
+          <span class="material-symbols-outlined" style="font-size: 14px;">close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Message History Stream -->
+    <div id="messages-container" class="messages-stream">
+      <!-- Empty welcome state injected dynamically if no messages -->
+    </div>
+
+    <!-- Quick Prompts Toolbar -->
+    <div class="prompts-bar">
+      <button type="button" class="quick-chip" data-prompt="show latest image">📷 Snapshot</button>
+      <button type="button" class="quick-chip" data-prompt="track history">🎯 Track History</button>
+      <button type="button" class="quick-chip" data-prompt="related detections">🔗 Related Events</button>
+      <button type="button" class="quick-chip" data-prompt="camera status">📹 Camera Telemetry</button>
+      <button type="button" class="quick-chip" data-prompt="latest intrusion">🚨 Intrusions</button>
+      <button type="button" class="quick-chip" data-prompt="system status">📊 System Health</button>
+    </div>
+
+    <!-- Bottom Input Form -->
+    <div class="chat-input-container">
+      <form id="chat-form" class="chat-input-form">
+        <textarea
+          id="chat-textarea"
+          rows="1"
+          placeholder="Ask the assistant about detections, tracks, camera telemetry, or intrusions... (Press Enter to send)"
+          autocomplete="off"
+        ></textarea>
+        <button type="submit" id="chat-submit-btn" class="btn btn--primary" style="height: 38px; width: 42px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+          <span class="material-symbols-outlined" style="font-size: 18px;">send</span>
+        </button>
+      </form>
+    </div>
+
+  </main>
 </div>
 
-<!-- ── 5. Internal SemanticEdge Assistant Chat Workspace (Dockable Drawer) ── -->
-<aside id="nvr-assistant-drawer" class="assistant-drawer" aria-hidden="true" style="position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 95vw; background: rgba(15, 15, 22, 0.96); backdrop-filter: blur(20px); border-left: 1px solid rgba(255, 255, 255, 0.1); z-index: 1050; display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: -12px 0 32px rgba(0,0,0,0.6);">
-
-  <!-- Drawer Header -->
-  <div style="padding: 14px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: var(--surface-container-low); display: flex; justify-content: space-between; align-items: center;">
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(109, 94, 245, 0.2); border: 1px solid rgba(109, 94, 245, 0.4); display: flex; align-items: center; justify-content: center;">
-        <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">smart_toy</span>
-      </div>
-      <div>
-        <div style="font-size: 13px; font-weight: 700; color: var(--on-surface);">Security Assistant</div>
-        <div id="drawer-subtitle" style="font-size: 10px; color: var(--outline); font-family: var(--font-mono);">SemanticEdge NVR Intelligence</div>
-      </div>
-    </div>
-
-    <div style="display: flex; align-items: center; gap: 6px;">
-      <button id="btn-new-conversation" type="button" class="btn btn--ghost btn--sm" style="font-size: 11px; padding: 3px 8px; height: 26px;" title="Start New Conversation">
-        <span class="material-symbols-outlined" style="font-size: 14px;">add</span>
-        <span>New</span>
-      </button>
-      <button id="btn-close-assistant" type="button" style="background: none; border: none; color: var(--outline); cursor: pointer; display: flex; align-items: center;" aria-label="Close assistant">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Thread Switcher Bar -->
-  <div style="padding: 8px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px;">
-    <span style="font-size: 10px; color: var(--outline); white-space: nowrap;">Thread:</span>
-    <select id="assistant-thread-select" class="nvr-select" style="font-size: 11px; padding: 2px 8px; flex: 1; height: 24px;">
-      <option value="">Current Investigation</option>
-    </select>
-  </div>
-
-  <!-- Active Context Badge Bar -->
-  <div id="assistant-active-context-bar" style="display: none; padding: 8px 16px; background: rgba(109, 94, 245, 0.12); border-bottom: 1px solid rgba(109, 94, 245, 0.25); align-items: center; justify-content: space-between; gap: 8px;">
-    <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
-      <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">target</span>
-      <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-        <span id="active-context-title" style="font-size: 11px; font-weight: 600; color: #fff;">Focusing on Alert #12</span>
-        <span id="active-context-meta" style="font-size: 10px; color: var(--outline); font-family: var(--font-mono); margin-left: 4px;"></span>
-      </div>
-    </div>
-    <button id="btn-clear-context" type="button" class="btn btn--ghost btn--sm" style="font-size: 10px; padding: 1px 6px; height: 20px; color: var(--outline);" title="Switch to General NVR Mode">
-      Clear
-    </button>
-  </div>
-
-  <!-- Messages Scroll Area -->
-  <div id="assistant-messages-container" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
-    <!-- Messages injected dynamically -->
-  </div>
-
-  <!-- Quick Prompts Toolbar -->
-  <div style="padding: 6px 12px; border-top: 1px solid rgba(255, 255, 255, 0.06); background: rgba(0,0,0,0.15); display: flex; gap: 6px; overflow-x: auto; white-space: nowrap;">
-    <button type="button" class="quick-prompt-chip" data-prompt="show latest image">📷 Snapshot</button>
-    <button type="button" class="quick-prompt-chip" data-prompt="track history">🎯 Track History</button>
-    <button type="button" class="quick-prompt-chip" data-prompt="related detections">🔗 Related</button>
-    <button type="button" class="quick-prompt-chip" data-prompt="camera status">📹 Cameras</button>
-    <button type="button" class="quick-prompt-chip" data-prompt="latest intrusion">🚨 Intrusion</button>
-    <button type="button" class="quick-prompt-chip" data-prompt="system status">📊 Telemetry</button>
-  </div>
-
-  <!-- Input Form -->
-  <form id="assistant-chat-form" style="padding: 12px 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); background: var(--surface-container-low); display: flex; gap: 8px; align-items: center;">
-    <input
-      type="text"
-      id="assistant-chat-input"
-      class="nvr-search-input"
-      placeholder="Ask about this alert, target, or cameras..."
-      style="flex: 1; font-size: 12px; padding: 8px 12px;"
-      autocomplete="off"
-    />
-    <button type="submit" id="assistant-chat-submit" class="btn btn--primary btn--sm" style="height: 34px; padding: 0 12px;">
-      <span class="material-symbols-outlined" style="font-size: 16px;">send</span>
-    </button>
-  </form>
-
-</aside>
-
+<!-- Styles for full-page ChatGPT-style workspace -->
 <style>
-.assistant-drawer.is-open {
-  transform: translateX(0) !important;
+/* Enforce strict fixed-height viewport for Explore regardless of stylesheet cache */
+.nvr-main-workspace {
+  overflow: hidden !important;
+  height: calc(100vh - var(--nvr-bottom-h)) !important;
+  max-height: calc(100vh - var(--nvr-bottom-h)) !important;
+  min-height: 0 !important;
 }
 
-.chat-msg {
+.nvr-content-container {
+  padding: 0 !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.investigation-workspace {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
+  background: var(--surface-dim);
+  overflow: hidden !important;
+  position: relative;
+}
+
+/* Sidebar */
+.threads-sidebar {
+  width: 290px;
+  min-width: 260px;
+  max-width: 340px;
+  height: 100%;
+  min-height: 0;
+  flex-shrink: 0;
+  background: var(--surface-container-low);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  max-width: 90%;
-  animation: fadeIn 0.15s ease-out;
+  overflow: hidden;
+}
+.threads-sidebar__header {
+  padding: 14px 14px 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+.threads-list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.thread-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.thread-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+.thread-item--active {
+  background: rgba(109, 94, 245, 0.12) !important;
+  border-color: rgba(109, 94, 245, 0.3) !important;
+}
+.thread-item__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+.thread-item__time {
+  font-size: 10.5px;
+  color: var(--outline);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.thread-item__tag {
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.thread-item__cam {
+  font-size: 10.5px;
+  color: var(--outline);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.thread-item__preview {
+  font-size: 11.5px;
+  color: var(--outline);
+  margin: 4px 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.thread-delete-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--outline);
+  padding: 2px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.thread-item:hover .thread-delete-btn {
+  opacity: 1;
+}
+.thread-delete-btn:hover {
+  color: #ff5f5f !important;
+  background: rgba(255, 80, 80, 0.12);
+}
+.threads-sidebar__footer {
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0,0,0,0.1);
 }
 
-.chat-msg--user {
-  align-self: flex-end;
+/* Chat Workspace */
+.chat-workspace {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+  background: #0d0e12;
+  position: relative;
+}
+.chat-workspace__header {
+  height: 54px;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface-container-low);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.context-banner {
+  padding: 8px 20px;
+  background: rgba(109, 94, 245, 0.1);
+  border-bottom: 1px solid rgba(109, 94, 245, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Message Stream */
+.messages-stream {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px 24px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.chat-bubble {
+  display: flex;
+  gap: 12px;
+  animation: fadeIn 0.18s ease-out;
+}
+.chat-bubble--user {
+  justify-content: flex-end;
+}
+.chat-bubble--assistant {
+  justify-content: flex-start;
+}
+.chat-bubble--system {
+  justify-content: center;
+}
+
+.chat-bubble__avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(109, 94, 245, 0.2);
+  border: 1px solid rgba(109, 94, 245, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.chat-bubble__content {
+  max-width: 80%;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+.chat-bubble--user .chat-bubble__content {
   background: var(--primary);
   color: #fff;
-  padding: 8px 12px;
-  border-radius: 12px 12px 2px 12px;
-  font-size: 12px;
-  box-shadow: 0 2px 8px rgba(109, 94, 245, 0.25);
+  padding: 10px 14px;
+  border-radius: 14px 14px 2px 14px;
+  box-shadow: 0 2px 10px rgba(109, 94, 245, 0.3);
 }
-
-.chat-msg--assistant {
-  align-self: flex-start;
+.chat-bubble--assistant .chat-bubble__content {
   background: var(--surface-container);
   color: var(--on-surface);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 10px 14px;
-  border-radius: 12px 12px 12px 2px;
-  font-size: 12px;
-  line-height: 1.45;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  padding: 12px 16px;
+  border-radius: 14px 14px 14px 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
-
-.chat-msg--system {
-  align-self: center;
+.chat-bubble--system .chat-bubble__content {
   background: rgba(255, 255, 255, 0.04);
   color: var(--outline);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 20px;
   font-size: 11px;
   text-align: center;
-  max-width: 95%;
 }
 
-.chat-evidence-card {
-  margin-top: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius);
+/* Evidence Card */
+.evidence-card {
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
   overflow: hidden;
   background: #000;
+  max-width: 440px;
+}
+.evidence-card__img-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.evidence-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.evidence-card__footer {
+  padding: 8px 12px;
+  background: var(--surface-container-low);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.quick-prompt-chip {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* Prompts Bar */
+.prompts-bar {
+  padding: 8px 24px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.quick-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   color: var(--on-surface-variant);
-  border-radius: 14px;
-  padding: 3px 8px;
-  font-size: 10px;
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 11px;
   cursor: pointer;
   transition: all 0.15s ease;
-  white-space: nowrap;
 }
-.quick-prompt-chip:hover {
-  background: rgba(109, 94, 245, 0.2);
+.quick-chip:hover {
+  background: rgba(109, 94, 245, 0.18);
   border-color: var(--primary);
   color: #fff;
 }
 
+/* Chat Input */
+.chat-input-container {
+  padding: 10px 24px 16px 24px;
+  background: var(--surface-container-low);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+.chat-input-form {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: var(--surface-container);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 6px 8px 6px 12px;
+  transition: border-color 0.15s ease;
+}
+.chat-input-form:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+#chat-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--on-surface);
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+  line-height: 1.4;
+  padding: 6px 0;
+  max-height: 120px;
+}
+#chat-textarea::placeholder {
+  color: var(--outline);
+}
+
+/* Welcome Blank State */
+.welcome-state {
+  text-align: center;
+  padding: 40px 20px;
+  margin: auto 0;
+}
+.starter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  max-width: 640px;
+  margin: 24px auto 0 auto;
+  text-align: left;
+}
+.starter-card {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-container);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.starter-card:hover {
+  background: rgba(109, 94, 245, 0.1);
+  border-color: var(--primary);
+}
+.starter-card__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin-bottom: 2px;
+}
+.starter-card__desc {
+  font-size: 11px;
+  color: var(--outline);
+  margin: 0;
+}
+
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseDots {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
 }
 </style>
 
+<!-- Client JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const drawer = document.getElementById('nvr-assistant-drawer');
-  const btnToggle = document.getElementById('btn-toggle-assistant');
-  const btnClose = document.getElementById('btn-close-assistant');
-  const btnNewConv = document.getElementById('btn-new-conversation');
-  const threadSelect = document.getElementById('assistant-thread-select');
-  const contextBar = document.getElementById('assistant-active-context-bar');
-  const contextTitle = document.getElementById('active-context-title');
-  const contextMeta = document.getElementById('active-context-meta');
-  const btnClearContext = document.getElementById('btn-clear-context');
-  const messagesContainer = document.getElementById('assistant-messages-container');
-  const chatForm = document.getElementById('assistant-chat-form');
-  const chatInput = document.getElementById('assistant-chat-input');
-  const chatSubmit = document.getElementById('assistant-chat-submit');
+  let currentConversationId = '{{ init_conversation_id|default:"" }}';
+  let currentActiveEventId = '{{ init_event_id|default:"" }}';
+  const initInvestigate = '{{ init_investigate|default:"" }}';
 
-  let currentConversationId = null;
-  let currentActiveEventId = null;
+  const messagesContainer = document.getElementById('messages-container');
+  const chatForm = document.getElementById('chat-form');
+  const chatTextarea = document.getElementById('chat-textarea');
+  const chatSubmitBtn = document.getElementById('chat-submit-btn');
+  const contextBanner = document.getElementById('active-context-banner');
+  const contextTitle = document.getElementById('context-banner-title');
+  const contextMeta = document.getElementById('context-banner-meta');
+  const contextReviewBtn = document.getElementById('context-review-btn');
+  const btnDetachContext = document.getElementById('btn-detach-context');
+  const btnNewThread = document.getElementById('btn-new-thread');
+  const threadSearchInput = document.getElementById('thread-search-input');
+  const currentThreadTitle = document.getElementById('current-thread-title');
 
-  // Toggle Drawer
-  function toggleDrawer(open) {
-    const shouldOpen = open !== undefined ? open : !drawer.classList.contains('is-open');
-    if (shouldOpen) {
-      drawer.classList.add('is-open');
-      drawer.setAttribute('aria-hidden', 'false');
-      chatInput.focus();
-    } else {
-      drawer.classList.remove('is-open');
-      drawer.setAttribute('aria-hidden', 'true');
+  // Auto-resize textarea
+  chatTextarea.addEventListener('input', () => {
+    chatTextarea.style.height = 'auto';
+    chatTextarea.style.height = Math.min(chatTextarea.scrollHeight, 120) + 'px';
+  });
+
+  // Enter to send (Shift+Enter for newline)
+  chatTextarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      chatForm.dispatchEvent(new Event('submit'));
     }
-  }
+  });
 
-  if (btnToggle) btnToggle.addEventListener('click', () => toggleDrawer());
-  if (btnClose) btnClose.addEventListener('click', () => toggleDrawer(false));
-
-  // Render a single message
+  // Render a message in the stream
   function renderMessage(msg) {
-    const el = document.createElement('div');
-    el.className = `chat-msg chat-msg--${msg.sender}`;
+    // Hide empty state if present
+    const emptyState = document.getElementById('workspace-welcome-state');
+    if (emptyState) emptyState.remove();
+
+    const row = document.createElement('div');
+    row.className = `chat-bubble chat-bubble--${msg.sender}`;
 
     if (msg.sender === 'user') {
-      el.textContent = msg.content;
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble__content';
+      bubble.textContent = msg.content;
+      row.appendChild(bubble);
     } else if (msg.sender === 'system') {
-      el.innerHTML = msg.content.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble__content';
+      bubble.innerHTML = msg.content.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      row.appendChild(bubble);
     } else {
       // Assistant message
+      const avatar = document.createElement('div');
+      avatar.className = 'chat-bubble__avatar';
+      avatar.innerHTML = `<span class="material-symbols-outlined" style="font-size: 16px;">smart_toy</span>`;
+      row.appendChild(avatar);
+
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble__content';
+
       const textDiv = document.createElement('div');
       textDiv.style.whiteSpace = 'pre-wrap';
       textDiv.textContent = msg.content;
-      el.appendChild(textDiv);
+      bubble.appendChild(textDiv);
 
-      // Render evidence if present
+      // Evidence rendering
       const ev = msg.evidence || {};
       if (ev.snapshot_url) {
-        const card = document.createElement('div');
-        card.className = 'chat-evidence-card';
-        card.innerHTML = `
-          <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; overflow: hidden;">
-            <img src="${ev.snapshot_url}" alt="Evidence Snapshot" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.parentElement.style.display='none';" />
-            <div style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-family: var(--font-mono); color: var(--primary);">
+        const evCard = document.createElement('div');
+        evCard.className = 'evidence-card';
+        evCard.innerHTML = `
+          <div class="evidence-card__img-box">
+            <img class="evidence-card__img" src="${ev.snapshot_url}" alt="Detection Evidence" onerror="this.parentElement.style.display='none';" />
+            <div style="position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-family: var(--font-mono); color: var(--primary);">
               Event #${ev.event_id || ''}
             </div>
           </div>
-          <div style="padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; background: var(--surface-container-low);">
-            <span style="font-size: 10px; color: var(--outline); font-family: var(--font-mono);">${ev.camera_name || ''}</span>
+          <div class="evidence-card__footer">
+            <span style="font-size: 11px; color: var(--outline); font-family: var(--font-mono);">${ev.camera_name || ''} &bull; ${ev.class_name || ''}</span>
             <a href="/nvr/review/?class=${encodeURIComponent(ev.class_name || '')}&track_id=${encodeURIComponent(ev.track_id || '')}&event_id=${encodeURIComponent(ev.event_id || '')}"
-               class="btn btn--secondary btn--sm" style="font-size: 10px; padding: 2px 6px; height: 20px;">
+               class="btn btn--secondary btn--sm" style="font-size: 10px; padding: 2px 8px; height: 22px;">
               <span>Inspect in Review &rarr;</span>
             </a>
           </div>
         `;
-        el.appendChild(card);
+        bubble.appendChild(evCard);
       }
 
-      // Render suggested actions
+      // Suggested actions
       if (Array.isArray(ev.suggested_actions) && ev.suggested_actions.length > 0) {
-        const actionsDiv = document.createElement('div');
-        actionsDiv.style.display = 'flex';
-        actionsDiv.style.gap = '6px';
-        actionsDiv.style.marginTop = '8px';
+        const actWrap = document.createElement('div');
+        actWrap.style.display = 'flex';
+        actWrap.style.gap = '6px';
+        actWrap.style.marginTop = '10px';
+        actWrap.style.flexWrap = 'wrap';
+
         ev.suggested_actions.forEach(act => {
           if (act.action === 'navigate_review') {
             const p = new URLSearchParams(act.params || {}).toString();
             const btn = document.createElement('a');
             btn.href = `/nvr/review/?${p}`;
             btn.className = 'btn btn--secondary btn--sm';
-            btn.style.fontSize = '10px';
+            btn.style.fontSize = '11px';
             btn.style.padding = '2px 8px';
-            btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 12px;">manage_search</span> ${act.label}`;
-            actionsDiv.appendChild(btn);
+            btn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 13px;">manage_search</span> ${act.label}`;
+            actWrap.appendChild(btn);
           }
         });
-        el.appendChild(actionsDiv);
+        bubble.appendChild(actWrap);
       }
+
+      row.appendChild(bubble);
     }
 
-    messagesContainer.appendChild(el);
+    messagesContainer.appendChild(row);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
 
-  // Load conversation details
-  async function loadConversation(convId) {
+  // Render empty state with prompt suggestions
+  function renderEmptyState(title = 'SemanticEdge Intelligence Workspace') {
+    messagesContainer.innerHTML = `
+      <div id="workspace-welcome-state" class="welcome-state">
+        <div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(109, 94, 245, 0.15); border: 1px solid rgba(109, 94, 245, 0.35); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+          <span class="material-symbols-outlined" style="font-size: 28px; color: var(--primary);">smart_toy</span>
+        </div>
+        <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0 0 8px 0;">${title}</h3>
+        <p style="font-size: 13px; color: var(--outline); max-width: 480px; margin: 0 auto;">
+          Investigate security alerts, query tracked objects, inspect snapshot evidence, and analyze camera telemetry using internal controlled tools.
+        </p>
+        <div class="starter-grid">
+          <div class="starter-card" data-prompt="Show latest intrusions across all cameras">
+            <div class="starter-card__title">🚨 Recent Intrusions</div>
+            <p class="starter-card__desc">Find line crossings and perimeter alerts</p>
+          </div>
+          <div class="starter-card" data-prompt="List active cameras and their telemetry status">
+            <div class="starter-card__title">📹 Camera Health</div>
+            <p class="starter-card__desc">Check connected sensors and FPS</p>
+          </div>
+          <div class="starter-card" data-prompt="Show person detections in the last 1 hour with snapshots">
+            <div class="starter-card__title">🚶 Recent Person Activity</div>
+            <p class="starter-card__desc">Query person detections and snapshots</p>
+          </div>
+          <div class="starter-card" data-prompt="Summarize detection statistics for today">
+            <div class="starter-card__title">📊 Daily Activity Summary</div>
+            <p class="starter-card__desc">Aggregated statistics by class and time</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.querySelectorAll('.starter-card').forEach(card => {
+      card.addEventListener('click', () => {
+        chatTextarea.value = card.dataset.prompt;
+        chatForm.dispatchEvent(new Event('submit'));
+      });
+    });
+  }
+
+  // Load a conversation by ID
+  window.selectThread = async function(convId) {
+    if (!convId) return;
     try {
+      // Highlight sidebar item
+      document.querySelectorAll('.thread-item').forEach(el => {
+        el.classList.toggle('thread-item--active', el.dataset.threadId === String(convId));
+      });
+
       const res = await fetch(`/nvr/api/assistant/conversations/${convId}/`);
       const data = await res.json();
       if (!data.success) return;
 
       currentConversationId = data.conversation.id;
-      messagesContainer.innerHTML = '';
+      currentThreadTitle.textContent = data.conversation.title || 'Investigation';
 
+      // Update URL without full refresh
+      const url = new URL(window.location);
+      url.searchParams.set('conversation_id', currentConversationId);
+      url.searchParams.delete('event_id');
+      url.searchParams.delete('investigate');
+      window.history.replaceState({}, '', url);
+
+      // Context Banner
       const ctx = data.conversation.context || {};
       if (ctx.event_id) {
         currentActiveEventId = ctx.event_id;
-        contextBar.style.display = 'flex';
-        contextTitle.textContent = `${(ctx.class_name || 'Object').toUpperCase()} #${ctx.track_id || '?'}`;
-        contextMeta.textContent = `on ${ctx.camera_name || 'Camera'} (${ctx.status || ''})`;
+        contextBanner.style.display = 'flex';
+        contextTitle.textContent = `Focusing on ${(ctx.class_name || 'Object').toUpperCase()} #${ctx.track_id || '?'}`;
+        contextMeta.textContent = `on ${ctx.camera_name || 'Camera'} (${ctx.status || 'Active'})`;
+        contextReviewBtn.href = `/nvr/review/?class=${encodeURIComponent(ctx.class_name || '')}&track_id=${encodeURIComponent(ctx.track_id || '')}&event_id=${encodeURIComponent(ctx.event_id)}`;
       } else {
-        contextBar.style.display = 'none';
+        currentActiveEventId = null;
+        contextBanner.style.display = 'none';
       }
 
-      (data.conversation.messages || []).forEach(renderMessage);
-      loadThreadsList();
+      messagesContainer.innerHTML = '';
+      const msgs = data.conversation.messages || [];
+      if (msgs.length === 0) {
+        renderEmptyState(data.conversation.title);
+      } else {
+        msgs.forEach(renderMessage);
+      }
+
+      chatTextarea.focus();
     } catch (err) {
       console.error('Error loading conversation:', err);
     }
-  }
+  };
 
-  // Load or create conversation for an event
+  // Start or open conversation for a specific event
   async function startConversationForEvent(eventId) {
     try {
-      toggleDrawer(true);
       const res = await fetch('/nvr/api/assistant/conversations/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': '{{ csrf_token }}',
         },
-        body: JSON.stringify({ event_id: eventId })
+        body: JSON.stringify({ event_id: parseInt(eventId, 10) })
       });
       const data = await res.json();
       if (data.success) {
         currentConversationId = data.conversation.id;
         currentActiveEventId = eventId;
-        contextBar.style.display = 'flex';
-        const ctx = data.conversation.context || {};
-        contextTitle.textContent = `${(ctx.class_name || 'Object').toUpperCase()} #${ctx.track_id || '?'}`;
-        contextMeta.textContent = `on ${ctx.camera_name || 'Camera'} (${ctx.status || ''})`;
-
-        messagesContainer.innerHTML = '';
-        (data.conversation.messages || []).forEach(renderMessage);
-        loadThreadsList();
+        refreshSidebarThreads();
+        selectThread(currentConversationId);
       }
     } catch (err) {
       console.error('Error starting conversation for event:', err);
     }
   }
 
-  // Load threads list for dropdown
-  async function loadThreadsList() {
+  // Create brand new conversation
+  btnNewThread.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/nvr/api/assistant/conversations/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({ title: 'New Investigation' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        currentConversationId = data.conversation.id;
+        currentActiveEventId = null;
+        await refreshSidebarThreads();
+        selectThread(currentConversationId);
+      }
+    } catch (err) {
+      console.error('Error creating new conversation:', err);
+    }
+  });
+
+  // Detach context button
+  btnDetachContext.addEventListener('click', () => {
+    currentActiveEventId = null;
+    contextBanner.style.display = 'none';
+    renderMessage({
+      sender: 'system',
+      content: 'Switched to **General Surveillance Context**. Queries will now address all active cameras and detections.',
+    });
+  });
+
+  // Refresh sidebar threads list
+  async function refreshSidebarThreads() {
     try {
       const res = await fetch('/nvr/api/assistant/conversations/');
       const data = await res.json();
       if (!data.success) return;
 
-      threadSelect.innerHTML = '';
-      (data.conversations || []).forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = `${c.title} (${c.updated_at.slice(5, 16)})`;
-        if (c.id === currentConversationId) opt.selected = true;
-        threadSelect.appendChild(opt);
+      const threadsList = document.getElementById('threads-list');
+      const badge = document.getElementById('thread-count-badge');
+      if (badge) badge.textContent = data.conversations.length;
+
+      threadsList.innerHTML = '';
+      data.conversations.forEach(c => {
+        const item = document.createElement('div');
+        item.className = `thread-item ${c.id === currentConversationId ? 'thread-item--active' : ''}`;
+        item.dataset.threadId = c.id;
+        item.onclick = () => selectThread(c.id);
+
+        const timeStr = c.updated_at ? c.updated_at.slice(11, 16) : '';
+        const escapedTitle = (c.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        item.innerHTML = `
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 4px;">
+            <span class="thread-item__title">${c.title}</span>
+            <div style="display: flex; align-items: center; gap: 2px; flex-shrink: 0;">
+              <span class="thread-item__time">${timeStr}</span>
+              <button type="button"
+                      class="thread-delete-btn"
+                      onclick="event.stopPropagation(); confirmDeleteThread(${c.id}, '${escapedTitle}')"
+                      title="Delete investigation thread">
+                <span class="material-symbols-outlined" style="font-size: 14px;">delete</span>
+              </button>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+            ${c.event_id ? `<span class="thread-item__tag" style="background: rgba(109,94,245,0.18); color: var(--primary);">Event #${c.event_id}</span>` : `<span class="thread-item__tag" style="background: rgba(255,255,255,0.06); color: var(--outline);">General</span>`}
+            ${c.camera_name ? `<span class="thread-item__cam">${c.camera_name}</span>` : ''}
+          </div>
+          ${c.last_message ? `<p class="thread-item__preview">${c.last_message}</p>` : ''}
+        `;
+        threadsList.appendChild(item);
       });
-    } catch (err) {
-      console.error('Error loading threads:', err);
-    }
-  }
 
-  threadSelect.addEventListener('change', (e) => {
-    if (e.target.value) {
-      loadConversation(e.target.value);
-    }
-  });
-
-  if (btnNewConv) {
-    btnNewConv.addEventListener('click', async () => {
-      try {
-        const res = await fetch('/nvr/api/assistant/conversations/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}',
-          },
-          body: JSON.stringify({ title: 'General Investigation' })
-        });
-        const data = await res.json();
-        if (data.success) {
-          currentConversationId = data.conversation.id;
-          currentActiveEventId = null;
-          contextBar.style.display = 'none';
-          messagesContainer.innerHTML = '';
-          (data.conversation.messages || []).forEach(renderMessage);
-          loadThreadsList();
-        }
-      } catch (err) {
-        console.error('Error creating new conversation:', err);
+      if (data.conversations.length === 0) {
+        threadsList.innerHTML = `
+          <div style="padding: 24px 16px; text-align: center; color: var(--outline); font-size: 12px;">
+            <span class="material-symbols-outlined" style="font-size: 28px; opacity: 0.35; margin-bottom: 6px; display: block;">chat_bubble_outline</span>
+            <p style="margin: 0;">No investigations yet.<br>Click <strong>+ New Investigation</strong> or investigate an object from Review.</p>
+          </div>
+        `;
       }
-    });
-  }
-
-  if (btnClearContext) {
-    btnClearContext.addEventListener('click', () => {
-      currentActiveEventId = null;
-      contextBar.style.display = 'none';
-      renderMessage({
-        sender: 'system',
-        content: 'Switched to **General Surveillance Context**. Controlled tools will now query across all active cameras.',
-      });
-    });
+    } catch (err) {
+      console.error('Error refreshing threads:', err);
+    }
   }
 
   // Handle message sending
   chatForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const text = chatInput.value.trim();
+    const text = chatTextarea.value.trim();
     if (!text) return;
 
     if (!currentConversationId) {
-      // Auto-create conversation first
-      const res = await fetch('/nvr/api/assistant/conversations/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-        body: JSON.stringify({ event_id: currentActiveEventId })
-      });
-      const data = await res.json();
-      if (data.success) {
-        currentConversationId = data.conversation.id;
-      } else {
+      // Auto-create thread first
+      try {
+        const res = await fetch('/nvr/api/assistant/conversations/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+          body: JSON.stringify({ event_id: currentActiveEventId || null })
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentConversationId = data.conversation.id;
+        } else {
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to create conversation:', err);
         return;
       }
     }
 
     renderMessage({ sender: 'user', content: text });
-    chatInput.value = '';
-    chatSubmit.disabled = true;
+    chatTextarea.value = '';
+    chatTextarea.style.height = 'auto';
+    chatSubmitBtn.disabled = true;
 
     // Loading indicator
     const loadingEl = document.createElement('div');
-    loadingEl.className = 'chat-msg chat-msg--assistant';
+    loadingEl.className = 'chat-bubble chat-bubble--assistant';
     loadingEl.id = 'assistant-loading-msg';
-    loadingEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 14px; animation: spin 1s linear infinite;">sync</span> Querying controlled NVR tools...`;
+    loadingEl.innerHTML = `
+      <div class="chat-bubble__avatar">
+        <span class="material-symbols-outlined" style="font-size: 16px; animation: spin 1s linear infinite;">sync</span>
+      </div>
+      <div class="chat-bubble__content" style="display: flex; align-items: center; gap: 8px; color: var(--outline); font-size: 12px;">
+        <span>Querying controlled NVR tools...</span>
+      </div>
+    `;
     messagesContainer.appendChild(loadingEl);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
@@ -660,62 +967,145 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (data.success && data.assistant_message) {
         renderMessage(data.assistant_message);
+        refreshSidebarThreads();
       } else {
-        renderMessage({ sender: 'assistant', content: `Error: ${data.error || 'Unable to execute query.'}` });
+        renderMessage({ sender: 'assistant', content: `Error: ${data.error || 'Failed to retrieve assistant response.'}` });
       }
     } catch (err) {
       const loadMsg = document.getElementById('assistant-loading-msg');
       if (loadMsg) loadMsg.remove();
       renderMessage({ sender: 'assistant', content: `Network or Server Error: ${err}` });
     } finally {
-      chatSubmit.disabled = false;
+      chatSubmitBtn.disabled = false;
     }
   });
 
   // Quick Prompt Chips
-  document.querySelectorAll('.quick-prompt-chip').forEach(chip => {
+  document.querySelectorAll('.quick-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-      chatInput.value = chip.dataset.prompt;
+      chatTextarea.value = chip.dataset.prompt;
       chatForm.dispatchEvent(new Event('submit'));
     });
   });
 
-  // Global card investigate hook
-  window.openAssistantForCard = function(el) {
-    const eventId = el.getAttribute('data-event-id');
-    if (eventId) {
-      startConversationForEvent(parseInt(eventId, 10));
-    }
+  // Thread search filter in sidebar
+  threadSearchInput.addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('.thread-item').forEach(item => {
+      const text = item.textContent.toLowerCase();
+      item.style.display = text.includes(q) ? 'block' : 'none';
+    });
+  });
+
+  // Delete thread confirmation
+  window.confirmDeleteThread = function(threadId, threadTitle) {
+    const modal = document.getElementById('delete-thread-modal');
+    const titleEl = document.getElementById('delete-thread-modal-title');
+    if (titleEl) titleEl.textContent = `"${threadTitle || 'this investigation'}"`;
+    modal.dataset.threadId = threadId;
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
   };
 
-  window.openAssistantForEvent = function(eventId, data) {
-    if (eventId) {
-      startConversationForEvent(parseInt(eventId, 10));
-    }
+  window.cancelDeleteThread = function() {
+    const modal = document.getElementById('delete-thread-modal');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
   };
 
-  // Check URL params for auto-open (e.g. from Review "?event_id=12&investigate=1")
-  const urlParams = new URLSearchParams(window.location.search);
-  const paramEventId = urlParams.get('event_id');
-  const paramInvestigate = urlParams.get('investigate');
-  if (paramEventId && paramInvestigate) {
-    startConversationForEvent(parseInt(paramEventId, 10));
-  } else {
-    // Preload latest conversation if available
-    fetch('/nvr/api/assistant/conversations/')
-      .then(r => r.json())
-      .then(d => {
-        if (d.success && d.conversations && d.conversations.length > 0) {
-          currentConversationId = d.conversations[0].id;
-          loadConversation(currentConversationId);
+  window.executeDeleteThread = async function() {
+    const modal = document.getElementById('delete-thread-modal');
+    const threadId = modal.dataset.threadId;
+    if (!threadId) return;
+
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+
+    try {
+      const res = await fetch(`/nvr/api/assistant/conversations/${threadId}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+        credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (data.success) {
+        // If we deleted the active thread, clear the workspace
+        if (String(currentConversationId) === String(threadId)) {
+          currentConversationId = null;
+          currentActiveEventId = null;
+          contextBanner.style.display = 'none';
+          currentThreadTitle.textContent = 'Surveillance Assistant';
+          const url = new URL(window.location);
+          url.searchParams.delete('conversation_id');
+          url.searchParams.delete('event_id');
+          url.searchParams.delete('investigate');
+          window.history.replaceState({}, '', url);
         }
-      })
-      .catch(() => {});
+        await refreshSidebarThreads();
+        // After refresh, load first available thread or show empty state
+        if (!currentConversationId) {
+          const firstThread = document.querySelector('.thread-item');
+          if (firstThread && firstThread.dataset.threadId) {
+            selectThread(firstThread.dataset.threadId);
+          } else {
+            renderEmptyState();
+          }
+        }
+      } else {
+        console.error('Delete thread failed:', data.error);
+      }
+    } catch (err) {
+      console.error('Error deleting thread:', err);
+    }
+  };
+
+  // Initialize view state
+  if (currentActiveEventId && initInvestigate) {
+    startConversationForEvent(currentActiveEventId);
+  } else if (currentConversationId) {
+    selectThread(currentConversationId);
+  } else {
+    // Select first conversation if available, otherwise show empty state
+    const firstThread = document.querySelector('.thread-item');
+    if (firstThread && firstThread.dataset.threadId) {
+      selectThread(firstThread.dataset.threadId);
+    } else {
+      renderEmptyState();
+    }
   }
 });
 </script>
 <style>
 @keyframes spin { 100% { transform: rotate(360deg); } }
 </style>
-{% endblock %}
 
+<!-- Delete Thread Confirmation Modal -->
+<div id="delete-thread-modal"
+     aria-hidden="true"
+     role="dialog"
+     aria-modal="true"
+     style="display: none; position: fixed; inset: 0; z-index: 9998; background: rgba(0,0,0,0.72); backdrop-filter: blur(6px); align-items: center; justify-content: center; padding: 16px;">
+  <div style="background: var(--surface-container); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px 24px; max-width: 400px; width: 100%; box-shadow: 0 16px 40px rgba(0,0,0,0.65);">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+      <span class="material-symbols-outlined" style="font-size: 22px; color: #ff5f5f;">delete_forever</span>
+      <h3 style="font-size: 15px; font-weight: 700; color: var(--on-surface); margin: 0;">Delete Investigation Thread?</h3>
+    </div>
+    <p style="font-size: 13px; color: var(--outline); margin: 0 0 6px 0;">
+      You are about to permanently delete the thread:
+    </p>
+    <p style="font-size: 13px; font-weight: 600; color: var(--on-surface); margin: 0 0 14px 0; padding: 6px 10px; background: rgba(255,255,255,0.05); border-radius: 6px; font-style: italic;" id="delete-thread-modal-title"></p>
+    <p style="font-size: 12px; color: var(--outline); margin: 0 0 20px 0;">
+      All chat messages in this thread will be deleted. Detection events and snapshot evidence are not affected.
+    </p>
+    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+      <button type="button" class="btn btn--ghost btn--sm" onclick="cancelDeleteThread()" style="font-size: 13px; padding: 6px 14px;">
+        Cancel
+      </button>
+      <button type="button" class="btn btn--sm" onclick="executeDeleteThread()" style="font-size: 13px; padding: 6px 14px; background: rgba(255,60,60,0.15); border: 1px solid rgba(255,80,80,0.4); color: #ff5f5f;">
+        <span class="material-symbols-outlined" style="font-size: 15px;">delete</span>
+        Delete Thread
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}

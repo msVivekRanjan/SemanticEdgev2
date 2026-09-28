@@ -26,8 +26,6 @@ class BookDemoView(View):
         initial = {}
         if service_param == "vehicles_people":
             initial["service_vehicles_people"] = True
-        elif service_param == "face_recognition":
-            initial["service_face_recognition"] = True
         elif service_param == "object_count":
             initial["service_object_count"] = True
 

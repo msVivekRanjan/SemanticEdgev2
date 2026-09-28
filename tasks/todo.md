@@ -35,9 +35,67 @@
   - [x] Django system check: 0 issues.
   - [x] Database migrations applied cleanly.
 
+- [x] 7. Refined Operator Investigation Flow (Explore Card Direct Chat & Review Grouping)
+  - [x] Card click in Explore immediately launches investigation chat for that detection object (`investigateCard(this)` -> `startConversationForEvent(eventId)`).
+  - [x] Hover button (`.card-details-btn`) preserved on card thumbnail for opening metadata modal.
+  - [x] Replaced standalone "Security Assistant" branding with subtle "Threads" toolbar button and "Investigation" drawer title.
+  - [x] Grouped Review timeline view by tracked object identity `(class_name, track_id, camera_id)` matching Explore.
+  - [x] Each object in Review shows summary card, horizontal detection history strip, and "Investigate" button linked to Explore chat.
+  - [x] Provided backwards-compatible `events` along with `tracked_objects` in `ReviewView` context.
+  - [x] 8. Clean Architectural Separation of Explore and Review
+  - [x] **Explore**: Full-page ChatGPT-style investigation workspace (`templates/nvr/explore.html`). Centered around conversation/threads sidebar, active investigation title, attached event context banner with detach ability, rich chat message stream with evidence rendering, starter prompt suggestions, and quick query pills.
+  - [x] **Review**: Object / Event Exploration and Discovery Workspace (`templates/nvr/review.html` + `ReviewView` in `nvr/views.py`). Hosts the full multi-parameter search (keyword/description, class, camera, datetime range), object categories horizontal strips, metadata inspection modal, and direct "Investigate" button on every detection card linking into Explore with that event context.
+  - [x] Navigation sidebar in `base_nvr.html` updated with dedicated icons and labels reflecting Review as Object & Event Discovery and Explore as Investigation Workspace.
+  - [x] Tests in `nvr/tests.py` updated to verify Review search filtering and Explore workspace rendering. Full test suite passes (26/26 tests, 0 failures).
+
+## ACTIVE TASKS: Targeted UI/UX & Pipeline Refinements
+
+- [ ] 1. Completely Remove Face Recognition / Attendance
+  - [ ] Remove from navigation sidebar in `base_nvr.html` and delete `templates/nvr/face_recognition.html`.
+  - [ ] Remove `FaceRecognitionView` and `FaceStreamView` from `nvr/views.py` and `nvr/urls.py`.
+  - [ ] Remove `face_recognition_frame_generator` from `nvr/streaming.py`.
+  - [ ] Remove `FaceReference` and `AttendanceRecord` models from `nvr/models.py`, `nvr/admin.py`, and `nvr/assistant/tools.py`.
+  - [ ] Remove `has_face_recognition` from `accounts/models.py`, `accounts/admin.py`, and `service_face_recognition` from `core/models.py`.
+  - [ ] Create and run migrations (`makemigrations`, `migrate`).
+  - [ ] Clean up tests in `nvr/tests.py`, `accounts/tests.py`, and `core/tests.py`.
+
+- [ ] 2. Review Tab: Reduce Whitespace & Make Entire Card Clickable
+  - [ ] Streamline vertical space in `templates/nvr/review.html` between search/filter section and detection groups.
+  - [ ] Make entire detection card clickable (`openDetailModalFromEl`) with proper cursor and hover affordance.
+  - [ ] Remove the small info icon button.
+  - [ ] Ensure "Investigate" button uses `event.stopPropagation()` to avoid conflicting modal opening.
+
+- [ ] 3. Explore Tab: Fix Page Scrolling (ChatGPT Fixed-Viewport Layout)
+  - [ ] Ensure Explore viewport remains fixed within application shell (`height: 100%; overflow: hidden;`).
+  - [ ] Sidebar thread list has independent scroll (`overflow-y: auto`).
+  - [ ] Messages stream has independent scroll (`overflow-y: auto`).
+  - [ ] Composer input remains permanently pinned at the bottom.
+  - [ ] Main app sidebar and header do not shift when scrolling messages.
+
+- [ ] 4. Delete Investigation Thread (Backend & UI with Confirmation)
+  - [ ] Add `DELETE` method to `AssistantConversationDetailApiView` and `delete_conversation` in `AssistantService`.
+  - [ ] Ensure cascade deletes `ChatMessage` records without touching `DetectionEvent` or evidence.
+  - [ ] Add delete button and confirmation modal in Explore UI.
+  - [ ] Automatically select another thread or show welcome state upon deletion.
+
+- [ ] 5 & 6. Restricted-Zone Alert with Sound & Full Alert -> Review -> Explore Flow
+  - [ ] Add `/nvr/api/alerts/latest/` endpoint querying recent intrusion `DetectionEvent`s.
+  - [ ] Implement browser notification layer with Web Audio API chime and toast banner.
+  - [ ] Visual alert includes direct links to Review and Explore for the same detection event.
+  - [ ] Handle browser audio autoplay permission gracefully with un-mute indicator.
+  - [ ] Guarantee real-time detection pipeline remains non-blocking and decoupled.
+
+- [ ] 7. Increase Explore Chat Typography
+  - [ ] Increase font sizes for user and assistant messages, context banner, and thread items.
+  - [ ] Maintain proportional headings and buttons matching SemanticEdge design system.
+
+- [ ] 8. Comprehensive Verification
+  - [ ] Run full automated test suite (`./.venv/bin/python manage.py test`).
+  - [ ] Verify Django system checks (`manage.py check`).
+
 ## Review
 
-New pipeline architecture:
+New clean architecture:
 
   Camera -> YOLO -> ByteTrack -> trajectory/event logic -> DetectionEvent -> Alert
                                                                                |
@@ -48,16 +106,24 @@ New pipeline architecture:
                                                                                |
                                                               nvr/assistant/llm.py (RuleBased / Gemini)
                                                                                |
-                                                              Explore UI: Assistant Drawer Chat Panel
+                                 +---------------------------------------------+---------------------------------------------+
+                                 |                                                                                           |
+                       REVIEW WORKSPACE                                                             EXPLORE WORKSPACE
+              (Object / Event Discovery Grid)                                              (Full-Page ChatGPT Workspace)
+                 - Multi-parameter search & filters                                           - Thread list sidebar
+                 - Categories strips (Person, Car, etc.)                                      - Message stream with evidence cards
+                 - Detection metadata modal                                                   - Context banner with event binding
+                 - "Investigate" -> opens in Explore                                          - Starter prompts & quick query chips
 
 Key files created/modified:
-- nvr/assistant/__init__.py, tools.py, nlp.py, service.py, llm.py
-- nvr/models.py -- AlertConversation, ChatMessage (removed TelegramSession, TelegramFeedback)
-- nvr/views.py -- 4 new assistant API views
-- nvr/urls.py -- 4 new assistant API routes
-- nvr/streaming.py -- Telegram calls removed
-- templates/nvr/explore.html -- Assistant drawer, Investigate action, View in Review links
-- templates/nvr/settings.html -- Assistant diagnostics card (replaced Telegram card)
-- nvr/tests.py -- 9 new assistant/integration tests
-- Migrations: 0006_remove_telegramsession_user_alertconversation_and_more.py
-- nvr/management/commands/run_openclaw_bot.py -- DELETED
+- [nvr/assistant/](file:///Users/ms.vivekranjan/VIVEK/CODE/PROJECTS/YOLO_Project/SemanticEdgev2/semanticedge/nvr/assistant/) — tools.py, nlp.py, service.py, llm.py
+- [nvr/models.py](file:///Users/ms.vivekranjan/VIVEK/CODE/PROJECTS/YOLO_Project/SemanticEdgev2/semanticedge/nvr/models.py) — AlertConversation, ChatMessage (removed TelegramSession, TelegramFeedback)
+- [nvr/views.py](file:///Users/ms.vivekranjan/VIVEK/CODE/PROJECTS/YOLO_Project/SemanticEdgev2/semanticedge/nvr/views.py) — 4 new assistant API views, ReviewView grouped by tracked object identity
+- [nvr/urls.py](file:///Users/ms.vivekranjan/VIVEK/CODE/PROJECTS/YOLO_Project/SemanticEdgev2/semanticedge/nvr/urls.py) — 4 new assistant API routes
+- [nvr/streaming.py](file:///Users/ms.vivekranjan/VIVEK/CODE/PROJECTS/YOLO_Project/SemanticEdgev2/semanticedge/nvr/streaming.py) — Telegram calls removed
+- [templates/nvr/explore.html](file:///Users/ms.vivekranjan/VIVEK/CODE/PROJECTS/YOLO_Project/SemanticEdgev2/semanticedge/templates/nvr/explore.html) — Direct card-to-investigation chat, Threads toggle, details modal hover trigger
+- [templates/nvr/review.html](file:///Users/ms.vivekranjan/VIVEK/CODE/PROJECTS/YOLO_Project/SemanticEdgev2/semanticedge/templates/nvr/review.html) — Grouped tracked object view with detection timeline strips and Investigate actions
+- [templates/nvr/settings.html](file:///Users/ms.vivekranjan/VIVEK/CODE/PROJECTS/YOLO_Project/SemanticEdgev2/semanticedge/templates/nvr/settings.html) — Assistant diagnostics card (replaced Telegram card)
+- [nvr/tests.py](file:///Users/ms.vivekranjan/VIVEK/CODE/PROJECTS/YOLO_Project/SemanticEdgev2/semanticedge/nvr/tests.py) — Comprehensive integration & unit tests
+- Migrations: `0006_remove_telegramsession_user_alertconversation_and_more.py`
+- Removed: `nvr/management/commands/run_openclaw_bot.py`

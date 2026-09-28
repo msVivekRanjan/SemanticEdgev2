@@ -17,7 +17,6 @@ class DemoRequestForm(forms.ModelForm):
             "email",
             "phone",
             "service_vehicles_people",
-            "service_face_recognition",
             "service_object_count",
             "camera_count",
             "message",
@@ -43,7 +42,6 @@ class DemoRequestForm(forms.ModelForm):
                 "placeholder": "+1 (555) 000-0000 / +91 98765 43210",
             }),
             "service_vehicles_people": forms.CheckboxInput(attrs={"class": "custom-checkbox"}),
-            "service_face_recognition": forms.CheckboxInput(attrs={"class": "custom-checkbox"}),
             "service_object_count": forms.CheckboxInput(attrs={"class": "custom-checkbox"}),
             "camera_count": forms.Select(attrs={"class": "nvr-select", "style": "width: 100%;"}),
             "message": forms.Textarea(attrs={

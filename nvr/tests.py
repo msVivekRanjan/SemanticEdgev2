@@ -6,8 +6,6 @@ from django.urls import reverse
 from .models import (
     Camera,
     DetectionEvent,
-    FaceReference,
-    AttendanceRecord,
     ObjectCountRecord,
     MonitoringZone,
     AlertConversation,
@@ -34,7 +32,7 @@ class NVRAuthorizationAndTabsTests(TestCase):
         )
 
     def test_tabs_require_login(self):
-        for url_name in ["nvr:dashboard", "nvr:live", "nvr:review", "nvr:explore", "nvr:export", "nvr:settings", "nvr:face_recognition", "nvr:object_counter"]:
+        for url_name in ["nvr:dashboard", "nvr:live", "nvr:review", "nvr:explore", "nvr:export", "nvr:settings", "nvr:object_counter"]:
             url = reverse(url_name)
             response = self.client.get(url)
             self.assertEqual(response.status_code, 302)
@@ -104,24 +102,6 @@ class NVRAuthorizationAndTabsTests(TestCase):
         self.assertContains(review_res, "car")
         self.assertNotContains(review_res, "/media/detections/user_bob/obj_2_person.jpg")
 
-    def test_service_gating_face_recognition(self):
-        self.client.login(username="alice", password="password123")
-        # Alice does not have face_recognition service enabled by default
-        response = self.client.get(reverse("nvr:face_recognition"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "SERVICE NOT ACTIVATED")
-        self.assertContains(response, "Book a Demo to Unlock")
-
-        # Now admin enables face_recognition for Alice
-        profile = self.user1.service_profile
-        profile.has_face_recognition = True
-        profile.save()
-
-        response2 = self.client.get(reverse("nvr:face_recognition"))
-        self.assertEqual(response2.status_code, 200)
-        self.assertContains(response2, "Register Reference Face")
-        self.assertContains(response2, "Registered Faces")
-
     def test_service_gating_object_counter(self):
         self.client.login(username="alice", password="password123")
         # Object counter locked initially
@@ -156,7 +136,7 @@ class NVRAuthorizationAndTabsTests(TestCase):
         self.assertIn("health", data)
         self.assertEqual(data["health"], "OPTIMAL")
 
-    def test_explore_datetime_and_description_search(self):
+    def test_review_datetime_and_description_search(self):
         self.client.login(username="alice", password="password123")
         event = DetectionEvent.objects.create(
             user=self.user1,
@@ -172,20 +152,31 @@ class NVRAuthorizationAndTabsTests(TestCase):
             snapshot_path="/media/detections/user_alice/obj_42.jpg",
         )
 
-        # Search by description keyword
-        res = self.client.get(reverse("nvr:explore") + "?q=green+shirt")
+        # Search by description keyword in Review
+        res = self.client.get(reverse("nvr:review") + "?q=green+shirt")
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "obj_42.jpg")
 
-        # Search by class filter
-        res_class = self.client.get(reverse("nvr:explore") + "?class=person")
+        # Search by class filter in Review
+        res_class = self.client.get(reverse("nvr:review") + "?class=person")
         self.assertEqual(res_class.status_code, 200)
         self.assertContains(res_class, "obj_42.jpg")
 
-        # Search by non-matching class
-        res_car = self.client.get(reverse("nvr:explore") + "?class=car")
+        # Search by non-matching class in Review
+        res_car = self.client.get(reverse("nvr:review") + "?class=car")
         self.assertEqual(res_car.status_code, 200)
         self.assertNotContains(res_car, "obj_42.jpg")
+
+    def test_explore_investigation_workspace(self):
+        self.client.login(username="alice", password="password123")
+        res = self.client.get(reverse("nvr:explore"))
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("conversations", res.context)
+        self.assertIn("cameras", res.context)
+        content = res.content.decode()
+        self.assertIn("investigation-workspace", content)
+        self.assertIn("threads-sidebar", content)
+        self.assertIn("chat-workspace", content)
 
     def test_update_description_and_delete_detection_apis(self):
         self.client.login(username="alice", password="password123")
@@ -590,6 +581,9 @@ class NVRAuthorizationAndTabsTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.context["selected_track_id"], "99")
         self.assertEqual(res.context["selected_event_id"], str(event.id))
+        self.assertEqual(len(res.context["tracked_objects"]), 1)
+        self.assertEqual(res.context["tracked_objects"][0]["track_id"], "99")
+        self.assertEqual(res.context["tracked_objects"][0]["latest_event_id"], event.id)
         self.assertEqual(len(res.context["events"]), 1)
         self.assertEqual(res.context["events"][0]["track_id"], "99")
 

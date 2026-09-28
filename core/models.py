@@ -40,10 +40,6 @@ class DemoRequest(models.Model):
         default=False,
         verbose_name="Vehicles & People Detection (Traffic/Roads)",
     )
-    service_face_recognition = models.BooleanField(
-        default=False,
-        verbose_name="Face Recognition & Attendance (Institutions)",
-    )
     service_object_count = models.BooleanField(
         default=False,
         verbose_name="Industrial Object Counter (Factories)",

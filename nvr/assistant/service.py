@@ -146,6 +146,17 @@ class AssistantService:
             qs = qs.filter(user=user)
         return list(qs.order_by("-updated_at")[:limit])
 
+    def delete_conversation(self, conversation_id: int, user: User) -> bool:
+        """
+        Deletes a conversation and its cascaded chat messages.
+        Does NOT delete any associated DetectionEvent or snapshot files.
+        """
+        conv = self.get_conversation(conversation_id, user)
+        if not conv:
+            return False
+        conv.delete()
+        return True
+
     def post_user_message(self, conversation_id: int, user: User, text: str) -> dict[str, Any]:
         """
         Submits operator message, evaluates context & tools, queries LLM provider,

@@ -4,9 +4,7 @@ nvr/models.py
 Camera and Edge AI Services Data Models:
 1. Camera: Represents a registered video source.
 2. DetectionEvent: Persists detected objects with single snapshot evidence per object.
-3. FaceReference: Uploaded reference biometric face profiles for student/staff attendance.
-4. AttendanceRecord: Time-stamped face matching attendance log.
-5. ObjectCountRecord: Factory line-crossing count log.
+3. ObjectCountRecord: Factory line-crossing count log.
 """
 
 from django.contrib.auth.models import User
@@ -103,80 +101,6 @@ class DetectionEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.class_name} #{self.track_id} on {self.camera.name} ({self.created_at:%H:%M:%S})"
-
-
-class FaceReference(models.Model):
-    """
-    Uploaded face reference photo for college / enterprise attendance marking.
-    """
-
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="face_references",
-    )
-    person_name = models.CharField(max_length=150, verbose_name="Full Name")
-    person_id = models.CharField(
-        max_length=50,
-        blank=True,
-        verbose_name="Student / Employee ID",
-        help_text="e.g. STU-2024-042 or EMP-1092",
-    )
-    department = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name="Department / Class Section",
-        help_text="e.g. Computer Science - Year 3",
-    )
-    photo = models.ImageField(
-        upload_to="faces/references/",
-        blank=True,
-        null=True,
-        verbose_name="Reference Face Image",
-    )
-    photo_path = models.CharField(max_length=500, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["person_name"]
-        verbose_name = "Face Reference"
-        verbose_name_plural = "Face References"
-
-    def __str__(self) -> str:
-        return f"{self.person_name} ({self.person_id or 'No ID'}) - {self.user.username}"
-
-
-class AttendanceRecord(models.Model):
-    """
-    Biometric attendance log entry generated from live face matching.
-    """
-
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="attendance_records",
-    )
-    camera = models.ForeignKey(
-        Camera,
-        on_delete=models.CASCADE,
-        related_name="attendance_records",
-    )
-    face_reference = models.ForeignKey(
-        FaceReference,
-        on_delete=models.CASCADE,
-        related_name="attendance_records",
-    )
-    confidence = models.FloatField(default=0.92)
-    status = models.CharField(max_length=30, default="Present")
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-timestamp"]
-        verbose_name = "Attendance Record"
-        verbose_name_plural = "Attendance Records"
-
-    def __str__(self) -> str:
-        return f"{self.face_reference.person_name} - {self.status} at {self.timestamp:%Y-%m-%d %H:%M:%S}"
 
 
 class ObjectCountRecord(models.Model):

@@ -35,18 +35,6 @@
           <span>Live</span>
         </a>
 
-        <!-- Service 2: Face Recognition & Attendance -->
-        <a href="{% url 'nvr:face_recognition' %}"
-          class="nvr-sidebar__item {% if active_tab == 'face_recognition' %}nvr-sidebar__item--active{% endif %}"
-          title="Face Recognition & Attendance (Colleges/Offices)">
-          <span class="material-symbols-outlined">face</span>
-          <span style="position: relative;">
-            Face AI
-            {% if not user.is_superuser and user.service_profile and not user.service_profile.has_face_recognition %}
-            <span style="position: absolute; top: -6px; right: -8px; font-size: 10px;">🔒</span>
-            {% endif %}
-          </span>
-        </a>
 
         <!-- Service 3: Object Tracker (Restricted Area Monitoring) -->
         <a href="{% url 'nvr:object_counter' %}"
@@ -61,19 +49,19 @@
           </span>
         </a>
 
-        <!-- Review (Detection timeline) -->
+        <!-- Review (Event Review & Object Discovery) -->
         <a href="{% url 'nvr:review' %}"
           class="nvr-sidebar__item {% if active_tab == 'review' %}nvr-sidebar__item--active{% endif %}"
-          title="Chronological Event Review">
-          <span class="material-symbols-outlined">history</span>
+          title="Event Review & Object Discovery">
+          <span class="material-symbols-outlined">manage_search</span>
           <span>Review</span>
         </a>
 
-        <!-- Explore (Object gallery & Search) -->
+        <!-- Explore (Investigation Workspace / Chat) -->
         <a href="{% url 'nvr:explore' %}"
           class="nvr-sidebar__item {% if active_tab == 'explore' %}nvr-sidebar__item--active{% endif %}"
-          title="Object-Class Detection Search">
-          <span class="material-symbols-outlined">travel_explore</span>
+          title="Investigation Assistant Workspace">
+          <span class="material-symbols-outlined">forum</span>
           <span>Explore</span>
         </a>
 
@@ -120,7 +108,7 @@
     </aside>
 
     <!-- ── 2. Main Workspace Viewport ────────────────────────────────────── -->
-    <main class="nvr-main-workspace" id="nvr-workspace">
+    <main class="nvr-main-workspace{% block workspace_extra_class %}{% endblock %}" id="nvr-workspace">
       <!-- Django Alert Messages -->
       {% if messages %}
       <div style="padding: 12px 16px 0 16px;">
@@ -134,7 +122,7 @@
       </div>
       {% endif %}
 
-      <div class="nvr-content-container">
+      <div class="nvr-content-container{% block container_extra_class %}{% endblock %}">
         {% block nvr_content %}{% endblock %}
       </div>
     </main>
@@ -327,6 +315,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Floating Alert Toast Container (Restricted-Zone Intrusion Alerts) -->
+  <div id="nvr-alert-toast-container" class="nvr-toast-container" aria-live="assertive"></div>
 
   <!-- Scripts -->
   <script src="{% static 'js/main.js' %}"></script>

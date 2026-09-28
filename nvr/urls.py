@@ -17,8 +17,7 @@ from .views import (
     ExploreView,
     ExportCsvLogView,
     ExportView,
-    FaceRecognitionView,
-    FaceStreamView,
+    LatestIntrusionsApiView,
     LiveView,
     ObjectCounterStreamView,
     ObjectCounterView,
@@ -42,7 +41,6 @@ urlpatterns = [
     path("camera/<int:camera_id>/live/", LiveView.as_view(), name="camera_live"),
 
     # Edge AI Services Modules
-    path("face-recognition/", FaceRecognitionView.as_view(), name="face_recognition"),
     path("object-counter/", ObjectCounterView.as_view(), name="object_counter"),
     path("restricted-area/", RestrictedAreaView.as_view(), name="restricted_area"),
 
@@ -56,14 +54,14 @@ urlpatterns = [
     # Video streaming & Telemetry
     path("camera/<int:camera_id>/stream/", StreamView.as_view(), name="stream"),
     path("camera/<int:camera_id>/raw-stream/", RawStreamView.as_view(), name="raw_stream"),
-    path("camera/<int:camera_id>/face-stream/", FaceStreamView.as_view(), name="face_stream"),
     path("camera/<int:camera_id>/counter-stream/", ObjectCounterStreamView.as_view(), name="counter_stream"),
     path("camera/<int:camera_id>/stats/", StatsView.as_view(), name="stats"),
     path("camera/<int:camera_id>/log/", DetectionLogView.as_view(), name="log"),
     path("logs/", DetectionLogView.as_view(), name="logs"),
 
-    # Persistent status bar API
+    # Persistent status bar API & Real-time intrusion alerts
     path("api/system-status/", SystemStatusApiView.as_view(), name="system_status"),
+    path("api/alerts/latest/", LatestIntrusionsApiView.as_view(), name="latest_alerts"),
 
     # Monitoring Zone & Calibration APIs
     path("api/camera/<int:camera_id>/zones/", CameraZonesApiView.as_view(), name="camera_zones"),

@@ -26,11 +26,6 @@ class UserServiceProfile(models.Model):
         verbose_name="Vehicles & People Detection",
         help_text="Enables YOLOv8 + ByteTrack vehicle and pedestrian detection for traffic/road monitoring.",
     )
-    has_face_recognition = models.BooleanField(
-        default=False,
-        verbose_name="Face Recognition & Attendance",
-        help_text="Enables face matching against uploaded reference images for colleges/institutions.",
-    )
     has_object_count = models.BooleanField(
         default=False,
         verbose_name="Industrial Object Counter",
@@ -52,8 +47,6 @@ class UserServiceProfile(models.Model):
             return True
         if service_key in ("vehicles_people", "live"):
             return self.has_vehicles_people
-        if service_key == "face_recognition":
-            return self.has_face_recognition
         if service_key == "object_count":
             return self.has_object_count
         return False

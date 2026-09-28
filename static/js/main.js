@@ -38,6 +38,179 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateSystemStatusBar, 2500);
   }
 
+  // ── Restricted-Zone Intrusion Alert Audio & Visual Controller ──────────────
+  let audioCtx = null;
+  let audioUnlocked = false;
+
+  function initAudio() {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().then(() => {
+        audioUnlocked = true;
+      }).catch(() => {});
+    } else if (audioCtx && audioCtx.state === 'running') {
+      audioUnlocked = true;
+    }
+  }
+
+  // Auto-unlock audio context on first user interaction (handling browser autoplay policies)
+  ['pointerdown', 'keydown', 'click'].forEach(evt => {
+    document.addEventListener(evt, initAudio, { once: true, passive: true });
+  });
+
+  function playIntrusionChime() {
+    try {
+      if (!audioCtx) initAudio();
+      if (!audioCtx || audioCtx.state !== 'running') return;
+
+      const now = audioCtx.currentTime;
+
+      // Two-tone professional security alert chime (D5: 587.33Hz -> A5: 880Hz)
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      gainNode.connect(audioCtx.destination);
+      gainNode.gain.setValueAtTime(0.001, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.18, now + 0.04);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, now);
+      osc1.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(880, now + 0.12);
+
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+
+      osc1.start(now);
+      osc1.stop(now + 0.48);
+      osc2.start(now + 0.12);
+      osc2.stop(now + 0.48);
+    } catch (_) {
+      // Audio autoplay restrictions or context error
+    }
+  }
+
+  const toastContainer = document.getElementById('nvr-alert-toast-container');
+  let lastSeenAlertId = null;
+  const displayedAlertIds = new Set();
+
+  function showIntrusionToast(alert) {
+    if (!toastContainer) return;
+    if (displayedAlertIds.has(alert.id)) return;
+    displayedAlertIds.add(alert.id);
+
+    const toast = document.createElement('div');
+    toast.className = 'nvr-alert-toast';
+    toast.dataset.alertId = alert.id;
+
+    toast.innerHTML = `
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 26px; height: 26px; border-radius: 6px; background: rgba(255, 60, 60, 0.2); border: 1px solid rgba(255, 60, 60, 0.45); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <span class="material-symbols-outlined" style="font-size: 16px; color: #ff4d4d;">emergency</span>
+          </div>
+          <div>
+            <div style="font-size: 12.5px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px;">
+              <span>RESTRICTED-ZONE INTRUSION</span>
+              <span style="font-size: 10px; font-family: var(--font-mono); color: var(--outline); font-weight: normal;">${alert.timestamp}</span>
+            </div>
+            <div style="font-size: 11.5px; color: #ff8888; font-weight: 600; margin-top: 1px;">
+              ${alert.status}
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm toast-dismiss-btn" style="padding: 2px; height: 22px; width: 22px; min-width: 0; color: var(--outline); border: none;" title="Dismiss notification">
+          <span class="material-symbols-outlined" style="font-size: 16px;">close</span>
+        </button>
+      </div>
+
+      <div style="font-size: 11.5px; color: var(--on-surface-variant); background: rgba(0,0,0,0.3); border-radius: 6px; padding: 6px 10px; font-family: var(--font-mono); border: 1px solid rgba(255,255,255,0.05);">
+        <strong>${alert.class_name.toUpperCase()} #${alert.track_id}</strong> on <em>${alert.camera_name}</em> (${alert.confidence_pct})
+      </div>
+
+      <div style="display: flex; gap: 6px; margin-top: 2px;">
+        <a href="${alert.review_url}" class="btn btn--secondary btn--sm" style="flex: 1; font-size: 11px; padding: 4px 6px; display: flex; align-items: center; justify-content: center; gap: 4px; text-decoration: none;">
+          <span class="material-symbols-outlined" style="font-size: 14px;">manage_search</span>
+          <span>Review Event</span>
+        </a>
+        <a href="${alert.explore_url}" class="btn btn--primary btn--sm" style="flex: 1; font-size: 11px; padding: 4px 6px; display: flex; align-items: center; justify-content: center; gap: 4px; text-decoration: none; background: rgba(109,94,245,0.85);">
+          <span class="material-symbols-outlined" style="font-size: 14px;">forum</span>
+          <span>Investigate</span>
+        </a>
+      </div>
+    `;
+
+    const dismissBtn = toast.querySelector('.toast-dismiss-btn');
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        dismissToast(toast);
+      });
+    }
+
+    toastContainer.appendChild(toast);
+
+    // Auto-dismiss after 12 seconds
+    let timer = setTimeout(() => {
+      dismissToast(toast);
+    }, 12000);
+
+    toast.addEventListener('mouseenter', () => clearTimeout(timer), { once: true });
+  }
+
+  function dismissToast(toast) {
+    if (!toast || !toast.parentNode) return;
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px) scale(0.95)';
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 250);
+  }
+
+  async function pollIntrusionAlerts() {
+    try {
+      const url = lastSeenAlertId === null 
+        ? '/nvr/api/alerts/latest/' 
+        : `/nvr/api/alerts/latest/?since_id=${lastSeenAlertId}`;
+      const res = await fetch(url, { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.success) return;
+
+      if (lastSeenAlertId === null) {
+        // Initial sync: bookmark to highest existing id so existing records don't trigger sound on page load
+        lastSeenAlertId = data.max_id || 0;
+        return;
+      }
+
+      if (data.alerts && data.alerts.length > 0) {
+        playIntrusionChime();
+        const sorted = [...data.alerts].sort((a, b) => a.id - b.id);
+        sorted.forEach(alert => {
+          showIntrusionToast(alert);
+          if (alert.id > lastSeenAlertId) {
+            lastSeenAlertId = alert.id;
+          }
+        });
+      }
+
+      if (data.max_id > lastSeenAlertId) {
+        lastSeenAlertId = data.max_id;
+      }
+    } catch (_) { /* silent */ }
+  }
+
+  pollIntrusionAlerts();
+  setInterval(pollIntrusionAlerts, 2500);
+
   // ── 2. Real-Time Camera Telemetry Poller (Live Tab) ────────────────────────
   const statsPanel = document.getElementById('stats-panel');
   if (statsPanel) {
