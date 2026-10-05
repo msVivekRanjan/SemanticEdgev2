@@ -1,11 +1,15 @@
 """
 seed_demo.py
 ------------
-Seeds initial data for local development:
-- Default superuser: admin / admin123
-- Default demo user: demo / demo123
-- Default demo Camera (webcam 0)
-- Complete catalogue of 11 model-driven documentation pages
+Seeds initial data for development and Render Showcase Mode.
+
+Always seeded (both modes):
+  - Default superuser: admin / admin123
+  - Default demo user: demo / demo123
+  - Complete catalogue of 11 model-driven documentation pages
+
+Only seeded when SHOWCASE_MODE=false (full local/NVR mode):
+  - Default demo Camera (webcam 0) for each user
 """
 
 import os
@@ -25,9 +29,16 @@ if str(REPO_ROOT) not in sys.path:
 import django
 django.setup()
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from docs.models import DocPage
-from nvr.models import Camera
+
+# Determine deployment mode AFTER django.setup() so settings are fully loaded.
+_SHOWCASE_MODE = getattr(settings, "SHOWCASE_MODE", False)
+
+# Conditionally import Camera to avoid pulling in Edge-AI deps in Showcase Mode.
+if not _SHOWCASE_MODE:
+    from nvr.models import Camera
 
 
 def seed():
@@ -54,19 +65,22 @@ def seed():
     else:
         print("  ℹ User 'demo' already exists")
 
-    print("[Seed] Creating default cameras...")
-    for user in [admin_user, demo_user]:
-        cam, created = Camera.objects.get_or_create(
-            owner=user,
-            name="Primary Sensor (Webcam)",
-            defaults={
-                "source_url": "0",
-                "tracker_enabled": True,
-                "is_active": True,
-            }
-        )
-        if created:
-            print(f"  ✓ Created camera '{cam.name}' for user '{user.username}'")
+    if _SHOWCASE_MODE:
+        print("[Seed] Skipping camera seeding (SHOWCASE_MODE=true — NVR not loaded)")
+    else:
+        print("[Seed] Creating default cameras...")
+        for user in [admin_user, demo_user]:
+            cam, created = Camera.objects.get_or_create(
+                owner=user,
+                name="Primary Sensor (Webcam)",
+                defaults={
+                    "source_url": "0",
+                    "tracker_enabled": True,
+                    "is_active": True,
+                }
+            )
+            if created:
+                print(f"  ✓ Created camera '{cam.name}' for user '{user.username}'")
 
     print("[Seed] Seeding complete documentation catalogue (11 pages)...")
     docs_data = [
