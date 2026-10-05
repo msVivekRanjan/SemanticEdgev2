@@ -25,8 +25,15 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
     ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
 
+# ── Showcase Mode ────────────────────────────────────────────────────────────
+# When SHOWCASE_MODE=true (e.g. on Render), the nvr app is NOT loaded.
+# This prevents OpenCV, YOLO, ByteTrack, RTSP, and all Edge-AI dependencies
+# from being imported at startup. Home, Docs, Accounts/Login, and Support
+# remain fully functional. Set SHOWCASE_MODE=false for full local NVR mode.
+SHOWCASE_MODE = config("SHOWCASE_MODE", default=False, cast=bool)
+
 # ── Application definition ───────────────────────────────────────────────────
-INSTALLED_APPS = [
+_base_apps = [
     # Django built-ins
     "django.contrib.admin",
     "django.contrib.auth",
@@ -34,12 +41,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # SemanticEdge apps
+    # SemanticEdge apps (always loaded)
     "core",
     "docs",
     "accounts",
-    "nvr",
 ]
+
+INSTALLED_APPS = _base_apps if SHOWCASE_MODE else _base_apps + ["nvr"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -92,7 +100,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Login/logout redirect targets
 LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/nvr/dashboard/"
+# In Showcase Mode, redirect to home after login (no NVR to go to).
+# In full local mode, redirect to the NVR dashboard.
+LOGIN_REDIRECT_URL = "/" if SHOWCASE_MODE else "/nvr/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
 
 # ── Internationalisation ─────────────────────────────────────────────────────
@@ -120,9 +130,7 @@ YOLO_MODEL_PATH = config("YOLO_MODEL_PATH", default=str(BASE_DIR / "yolov8n.pt")
 YOLO_CONF_THRESHOLD = config("YOLO_CONF_THRESHOLD", default=0.40, cast=float)
 YOLO_DEVICE = config("YOLO_DEVICE", default="cpu")
 
-# ── Telegram Bot & OpenClaw Integration ──────────────────────────────────────
-TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
-TELEGRAM_CHAT_ID = config("TELEGRAM_CHAT_ID", default="")
+# (Telegram / OpenClaw integration has been removed from SemanticEdge v2)
 
 # ── Misc ─────────────────────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
