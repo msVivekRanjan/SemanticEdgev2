@@ -15,38 +15,32 @@ class DemoRequestForm(forms.ModelForm):
             "full_name",
             "company_name",
             "email",
-            "phone",
-            "service_vehicles_people",
-            "service_object_count",
-            "camera_count",
+            "query_type",
             "message",
         )
         widgets = {
             "full_name": forms.TextInput(attrs={
                 "class": "input",
-                "placeholder": "e.g. Dr. Rajesh Sharma / Jane Doe",
+                "placeholder": "e.g. Alex Johnson",
                 "required": True,
             }),
             "company_name": forms.TextInput(attrs={
                 "class": "input",
-                "placeholder": "e.g. Metropolitan Traffic Control / Apex Institute / Precision Gear Ltd",
-                "required": True,
+                "placeholder": "e.g. Apex Security, City Labs (optional)",
             }),
             "email": forms.EmailInput(attrs={
                 "class": "input",
-                "placeholder": "contact@organization.gov / admin@college.edu",
+                "placeholder": "alex@organization.com",
                 "required": True,
             }),
-            "phone": forms.TextInput(attrs={
-                "class": "input",
-                "placeholder": "+1 (555) 000-0000 / +91 98765 43210",
+            "query_type": forms.Select(attrs={
+                "class": "nvr-select",
+                "style": "width: 100%;",
             }),
-            "service_vehicles_people": forms.CheckboxInput(attrs={"class": "custom-checkbox"}),
-            "service_object_count": forms.CheckboxInput(attrs={"class": "custom-checkbox"}),
-            "camera_count": forms.Select(attrs={"class": "nvr-select", "style": "width: 100%;"}),
             "message": forms.Textarea(attrs={
                 "class": "input",
-                "rows": 4,
-                "placeholder": "Describe your deployment scale, hardware setup, or specific analytics needs...",
+                "rows": 5,
+                "placeholder": "How can we help? Describe your technical issue, deployment requirement, or question...",
+                "required": True,
             }),
         }

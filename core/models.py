@@ -9,65 +9,55 @@ from django.db import models
 
 class DemoRequest(models.Model):
     """
-    Stores 'Book a Demo' and service request submissions from clients.
+    Stores Support & Contact inquiries and project deployment requests.
     """
 
-    CAMERA_COUNT_CHOICES = [
-        ("1-5", "1 - 5 Cameras"),
-        ("6-20", "6 - 20 Cameras"),
-        ("21-50", "21 - 50 Cameras"),
-        ("50+", "50+ Enterprise Cameras"),
+    QUERY_TYPE_CHOICES = [
+        ("technical_support", "Technical Support"),
+        ("project_deployment", "Project / Deployment Query"),
+        ("documentation", "Documentation & General Questions"),
+        ("other", "Other Inquiry"),
     ]
 
     STATUS_CHOICES = [
         ("pending", "Pending Review"),
-        ("contacted", "Contacted"),
-        ("approved", "Approved / Activated"),
+        ("in_progress", "In Progress"),
+        ("resolved", "Resolved"),
         ("closed", "Closed"),
     ]
 
     full_name = models.CharField(max_length=150, verbose_name="Full Name")
     company_name = models.CharField(
         max_length=200,
-        verbose_name="Company / Institution Name",
-        help_text="Organization name (e.g. City Traffic Authority, University, Manufacturing Plant).",
+        blank=True,
+        default="",
+        verbose_name="Organization",
+        help_text="Organization name (optional).",
     )
-    email = models.EmailField(verbose_name="Work Email")
-    phone = models.CharField(max_length=50, blank=True, verbose_name="Phone Number")
-
-    # Services interested in
-    service_vehicles_people = models.BooleanField(
-        default=False,
-        verbose_name="Vehicles & People Detection (Traffic/Roads)",
-    )
-    service_object_count = models.BooleanField(
-        default=False,
-        verbose_name="Industrial Object Counter (Factories)",
-    )
-
-    camera_count = models.CharField(
+    email = models.EmailField(verbose_name="Email Address")
+    query_type = models.CharField(
         max_length=50,
-        choices=CAMERA_COUNT_CHOICES,
-        default="1-5",
-        verbose_name="Estimated Camera Count",
+        choices=QUERY_TYPE_CHOICES,
+        default="technical_support",
+        verbose_name="Subject / Query Type",
     )
     message = models.TextField(
-        blank=True,
-        verbose_name="Project Notes / Use Case Details",
+        verbose_name="Message",
     )
     status = models.CharField(
         max_length=30,
         choices=STATUS_CHOICES,
         default="pending",
-        verbose_name="Lead Status",
+        verbose_name="Status",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Demo Request"
-        verbose_name_plural = "Demo Requests"
+        verbose_name = "Support Inquiry"
+        verbose_name_plural = "Support Inquiries"
 
     def __str__(self) -> str:
-        return f"Demo for {self.company_name} ({self.full_name}) - {self.status}"
+        org = f" ({self.company_name})" if self.company_name else ""
+        return f"[{self.get_query_type_display()}] {self.full_name}{org} - {self.status}"

@@ -17,37 +17,38 @@ class HomeView(TemplateView):
 
 
 class BookDemoView(View):
-    """Book a Demo / Enterprise Contact page."""
+    """Support & Contact page view."""
 
     template_name = "core/book_demo.html"
 
     def get(self, request):
-        service_param = request.GET.get("service", "")
+        topic_param = request.GET.get("topic", request.GET.get("service", ""))
         initial = {}
-        if service_param == "vehicles_people":
-            initial["service_vehicles_people"] = True
-        elif service_param == "object_count":
-            initial["service_object_count"] = True
+        if topic_param in ["technical", "support"]:
+            initial["query_type"] = "technical_support"
+        elif topic_param in ["project", "deployment", "vehicles_people", "restricted_area"]:
+            initial["query_type"] = "project_deployment"
+        elif topic_param in ["docs", "documentation"]:
+            initial["query_type"] = "documentation"
 
         form = DemoRequestForm(initial=initial)
         return render(request, self.template_name, {
             "form": form,
-            "selected_service": service_param,
             "submitted": False,
         })
 
     def post(self, request):
         form = DemoRequestForm(request.POST)
         if form.is_valid():
-            demo_req = form.save()
+            contact_req = form.save()
             messages.success(
                 request,
-                f"Thank you, {demo_req.full_name}! Your demo request for {demo_req.company_name} has been received. Our solutions team will contact you within 24 hours.",
+                f"Thank you, {contact_req.full_name}! Your message has been received. Our team will get back to you within 24 hours.",
             )
             return render(request, self.template_name, {
                 "form": DemoRequestForm(),
                 "submitted": True,
-                "demo_req": demo_req,
+                "contact_req": contact_req,
             })
         return render(request, self.template_name, {
             "form": form,

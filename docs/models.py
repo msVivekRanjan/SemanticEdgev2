@@ -32,7 +32,7 @@ class DocPage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["category", "order", "title"]
+        ordering = ["order", "title"]
         verbose_name = "Documentation Page"
         verbose_name_plural = "Documentation Pages"
 

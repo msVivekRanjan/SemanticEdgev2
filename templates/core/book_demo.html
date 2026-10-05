@@ -1,80 +1,81 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Book a Demo & Custom Services — SemanticEdge{% endblock %}
-{% block meta_description %}Schedule an edge AI demonstration tailored to your organization's needs: Traffic & Roads,
-College Face Attendance, or Factory Object Counting.{% endblock %}
+{% block title %}Support & Contact — SemanticEdge{% endblock %}
+{% block meta_description %}Get in touch with the SemanticEdge engineering and solutions team for technical support, deployment inquiries, documentation assistance, and project queries.{% endblock %}
 
 {% block content %}
 <section class="section reveal"
-  style="padding-top: calc(var(--nav-height) + var(--space-3xl)); max-width: 1100px; margin: 0 auto;">
+  style="padding-top: calc(var(--nav-height) + var(--space-3xl)); max-width: 1100px; margin: 0 auto; padding-bottom: var(--space-4xl);">
 
   <!-- Page Header -->
   <div style="text-align: center; margin-bottom: var(--space-3xl);">
-    <p class="eyebrow" style="margin-bottom: var(--space-sm);">CUSTOM ENTERPRISE VISION</p>
+    <p class="eyebrow" style="margin-bottom: var(--space-sm);">SUPPORT &amp; CONTACT</p>
     <h1
       style="font-size: clamp(36px, 6vw, 64px); font-weight: 900; letter-spacing: -0.03em; color: var(--on-surface); line-height: 1.1; margin-bottom: var(--space-md);">
-      Book a Demo & <span class="gradient-text">Activate Services</span>
+      How can we <span class="gradient-text">help?</span>
     </h1>
     <p
       style="font-size: 16px; font-weight: 300; color: var(--on-surface-variant); max-width: 65ch; margin: 0 auto; line-height: 1.8;">
-      SemanticEdge delivers tailored on-premise vision intelligence modules designed specifically for Traffic
-      Authorities, Academic Institutions, and Industrial Manufacturing Plants.
+      Have questions about local edge AI deployments, camera streaming configurations, or need technical assistance? Our engineering and support team is here to assist.
     </p>
   </div>
 
   <div
     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-2xl); align-items: start;">
 
-    <!-- Left: Services Value Summary -->
+    <!-- Left: Support Channels & Guidance -->
     <div style="display: flex; flex-direction: column; gap: var(--space-lg);">
 
-      <div class="card card--dark" style="border-left: 3px solid var(--primary);">
+      <!-- Technical Support -->
+      <div class="card card--dark" style="border-left: 3px solid var(--primary); padding: var(--space-xl);">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-          <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">traffic</span>
-          <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0;">Traffic & Road
-            Surveillance</h3>
+          <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">build</span>
+          <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0;">Technical Support</h3>
         </div>
         <p style="font-size: 13px; color: var(--on-surface-variant); line-height: 1.7; margin: 0;">
-          Real-time vehicle classification, pedestrian safety monitoring, flow density telemetry, and automated
-          violation/line-crossing logs for municipal traffic authorities.
+          Assistance with edge inference pipelines, YOLOv8 model loading, ByteTrack tracking accuracy, RTSP stream ingestion, and hardware acceleration on CPU, NVIDIA CUDA, or Apple Silicon MPS.
         </p>
       </div>
 
-      <div class="card card--dark" style="border-left: 3px solid var(--tertiary);">
+      <!-- Project / Deployment Queries -->
+      <div class="card card--dark" style="border-left: 3px solid var(--tertiary); padding: var(--space-xl);">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-          <span class="material-symbols-outlined" style="color: var(--tertiary); font-size: 24px;">face</span>
-          <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0;">Facial Recognition &
-            Attendance</h3>
+          <span class="material-symbols-outlined" style="color: var(--tertiary); font-size: 24px;">lan</span>
+          <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0;">Project / Deployment Queries</h3>
         </div>
         <p style="font-size: 13px; color: var(--on-surface-variant); line-height: 1.7; margin: 0;">
-          High-accuracy face matching against uploaded database references with instant timestamped attendance logging
-          for universities, colleges, and corporate campuses.
+          Guidance on on-premise hardware sizing (Intel NUC, Jetson, Mac Mini), 5G private cellular topologies, Tailscale WireGuard subnet routing, and enterprise multi-camera infrastructure.
         </p>
       </div>
 
-      <div class="card card--dark" style="border-left: 3px solid #3cc8ff;">
+      <!-- Documentation & General Questions -->
+      <div class="card card--dark" style="border-left: 3px solid #3cc8ff; padding: var(--space-xl);">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-          <span class="material-symbols-outlined"
-            style="color: #3cc8ff; font-size: 24px;">precision_manufacturing</span>
-          <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0;">Industrial Object Counter
-          </h3>
+          <span class="material-symbols-outlined" style="color: #3cc8ff; font-size: 24px;">menu_book</span>
+          <h3 style="font-size: 18px; font-weight: 700; color: var(--on-surface); margin: 0;">Documentation &amp; General Questions</h3>
         </div>
         <p style="font-size: 13px; color: var(--on-surface-variant); line-height: 1.7; margin: 0;">
-          Automated conveyor belt part counting, defect tracking, and yield throughput reporting directly on factory
-          floor edge compute without cloud dependencies.
+          Questions regarding our 11 model-driven documentation guides, REST API integrations, security assistant tools, or open-source community contributions.
         </p>
       </div>
 
+      <!-- Documentation Quick Link -->
       <div
-        style="padding: 16px 20px; background-color: rgba(109, 94, 245, 0.08); border: 1px dashed rgba(109, 94, 245, 0.3); border-radius: var(--radius); font-size: 13px; color: var(--on-surface-variant); line-height: 1.6;">
-        <strong style="color: var(--on-surface);">🔒 100% Local Processing Guarantee:</strong> All models run strictly
-        on your on-premises edge servers or workstations. No raw video or biometric data is ever transmitted off-site.
+        style="padding: 18px 20px; background-color: rgba(109, 94, 245, 0.08); border: 1px dashed rgba(109, 94, 245, 0.3); border-radius: var(--radius); font-size: 13px; color: var(--on-surface-variant); line-height: 1.6; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+        <div>
+          <strong style="color: var(--on-surface); display: block; margin-bottom: 2px;">Explore Setup Guides</strong>
+          <span>Browse technical architecture, Tailscale RTSP guides, and API docs.</span>
+        </div>
+        <a href="{% url 'docs:list' %}" class="btn btn--ghost btn--sm" style="white-space: nowrap;">
+          <span>Read Docs</span>
+          <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
+        </a>
       </div>
 
     </div>
 
-    <!-- Right: Interactive Contact & Demo Form -->
+    <!-- Right: Clean Support & Contact Form -->
     <div class="card card--dark"
       style="padding: var(--space-xl); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
 
@@ -82,15 +83,13 @@ College Face Attendance, or Factory Object Counting.{% endblock %}
       <div style="text-align: center; padding: var(--space-xl) 0;">
         <span class="material-symbols-outlined"
           style="font-size: 56px; color: var(--success); margin-bottom: var(--space-md);">check_circle</span>
-        <h2 style="font-size: 24px; font-weight: 800; color: var(--on-surface); margin-bottom: 8px;">Demo Request Received!</h2>
+        <h2 style="font-size: 24px; font-weight: 800; color: var(--on-surface); margin-bottom: 8px;">Message Received!</h2>
         <p style="font-size: 14px; color: var(--on-surface-variant); line-height: 1.7; margin-bottom: var(--space-xl);">
-          Thank you, <strong style="color: var(--on-surface);">{{ demo_req.full_name }}</strong>. Our edge AI
-          specialists will prepare a custom demonstration for <strong style="color: var(--on-surface);">{{
-            demo_req.company_name }}</strong> and contact you at <strong style="color: var(--primary);">{{
-            demo_req.email }}</strong>.
+          Thank you, <strong style="color: var(--on-surface);">{{ contact_req.full_name }}</strong>. Your message regarding <strong style="color: var(--primary);">{{ contact_req.get_query_type_display }}</strong> has been received. Our team will get back to you at <strong style="color: var(--primary);">{{ contact_req.email }}</strong> within 24 hours.
         </p>
-        <div style="display: flex; gap: 12px; justify-content: center;">
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
           <a href="{% url 'core:home' %}" class="btn btn--ghost btn--sm">Back to Home</a>
+          <a href="{% url 'docs:list' %}" class="btn btn--ghost btn--sm">Browse Docs</a>
           {% if user.is_authenticated %}
           <a href="{% url 'nvr:live' %}" class="btn btn--primary btn--sm">Return to NVR Console</a>
           {% else %}
@@ -100,12 +99,12 @@ College Face Attendance, or Factory Object Counting.{% endblock %}
       </div>
       {% else %}
 
-      <h2 style="font-size: 22px; font-weight: 800; color: var(--on-surface); margin-bottom: 6px;">Request Service Activation</h2>
+      <h2 style="font-size: 22px; font-weight: 800; color: var(--on-surface); margin-bottom: 6px;">Send us a Message</h2>
       <p style="font-size: 13px; color: var(--on-surface-variant); margin-bottom: var(--space-lg);">
-        Fill in your organization details to schedule a live demo or unlock specific services.
+        Fill in the details below and we will route your inquiry to the appropriate engineering or solutions team.
       </p>
 
-      <form method="post" id="demo-request-form">
+      <form method="post" id="support-contact-form">
         {% csrf_token %}
 
         <div
@@ -119,7 +118,7 @@ College Face Attendance, or Factory Object Counting.{% endblock %}
           </div>
 
           <div>
-            <label class="input-label" for="{{ form.company_name.id_for_label }}">Organization *</label>
+            <label class="input-label" for="{{ form.company_name.id_for_label }}">Organization <span style="font-weight: 400; color: var(--on-surface-variant); font-size: 11px;">(optional)</span></label>
             {{ form.company_name }}
             {% if form.company_name.errors %}
             <p style="color: var(--error); font-size: 11px; margin-top: 4px;">{{ form.company_name.errors.0 }}</p>
@@ -130,7 +129,7 @@ College Face Attendance, or Factory Object Counting.{% endblock %}
         <div
           style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
           <div>
-            <label class="input-label" for="{{ form.email.id_for_label }}">Work Email *</label>
+            <label class="input-label" for="{{ form.email.id_for_label }}">Email *</label>
             {{ form.email }}
             {% if form.email.errors %}
             <p style="color: var(--error); font-size: 11px; margin-top: 4px;">{{ form.email.errors.0 }}</p>
@@ -138,41 +137,24 @@ College Face Attendance, or Factory Object Counting.{% endblock %}
           </div>
 
           <div>
-            <label class="input-label" for="{{ form.phone.id_for_label }}">Phone Number</label>
-            {{ form.phone }}
+            <label class="input-label" for="{{ form.query_type.id_for_label }}">Subject / Query Type *</label>
+            {{ form.query_type }}
+            {% if form.query_type.errors %}
+            <p style="color: var(--error); font-size: 11px; margin-top: 4px;">{{ form.query_type.errors.0 }}</p>
+            {% endif %}
           </div>
-        </div>
-
-        <!-- Service Checkboxes -->
-        <div style="margin-bottom: var(--space-md);">
-          <label class="input-label" style="margin-bottom: 8px;">Select Services Needed *</label>
-          <div
-            style="display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.06);">
-            <label
-              style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--on-surface); cursor: pointer;">
-              {{ form.service_vehicles_people }}
-              <span><strong>Vehicles & People Detection</strong></span>
-            </label>
-            <label
-              style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--on-surface); cursor: pointer;">
-              {{ form.service_object_count }}
-              <span><strong>Industrial Object Counter</strong></span>
-            </label>
-          </div>
-        </div>
-
-        <div style="margin-bottom: var(--space-md);">
-          <label class="input-label" for="{{ form.camera_count.id_for_label }}">Estimated Camera Scale</label>
-          {{ form.camera_count }}
         </div>
 
         <div style="margin-bottom: var(--space-lg);">
-          <label class="input-label" for="{{ form.message.id_for_label }}">Project Details / Custom Requirements</label>
+          <label class="input-label" for="{{ form.message.id_for_label }}">Message *</label>
           {{ form.message }}
+          {% if form.message.errors %}
+          <p style="color: var(--error); font-size: 11px; margin-top: 4px;">{{ form.message.errors.0 }}</p>
+          {% endif %}
         </div>
 
-        <button type="submit" class="btn btn--primary btn--full btn--hero" id="submit-demo-btn">
-          <span>Submit Request</span>
+        <button type="submit" class="btn btn--primary btn--full btn--hero" id="submit-contact-btn">
+          <span>Send Message</span>
           <span class="material-symbols-outlined">send</span>
         </button>
 

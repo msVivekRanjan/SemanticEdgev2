@@ -54,12 +54,12 @@ def _extract_toc(content_html: str) -> list[dict]:
 
 
 def _get_sidebar_groups() -> list[dict]:
-    """Return all docs grouped by category for the sidebar."""
-    pages = DocPage.objects.order_by("category", "order", "title")
-    groups = []
-    for category, items in groupby(pages, key=lambda p: p.category):
-        groups.append({"category": category, "pages": list(items)})
-    return groups
+    """Return all docs grouped by category in logical document order."""
+    pages = DocPage.objects.order_by("order", "title")
+    groups = {}
+    for p in pages:
+        groups.setdefault(p.category, []).append(p)
+    return [{"category": category, "pages": items} for category, items in groups.items()]
 
 
 class DocsListView(TemplateView):
@@ -68,7 +68,7 @@ class DocsListView(TemplateView):
     template_name = "docs/list.html"
 
     def get(self, request, *args, **kwargs):
-        first = DocPage.objects.order_by("category", "order", "title").first()
+        first = DocPage.objects.order_by("order", "title").first()
         if first:
             return redirect(first.get_absolute_url())
         return super().get(request, *args, **kwargs)
