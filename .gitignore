@@ -35,6 +35,11 @@ output/
 *.jpeg
 *.png
 !static/
+!static/assets/
+!static/assets/*.png
+!static/img/
+!static/img/*.png
+!static/img/*.svg
 
 # ── YOLO & PyTorch Cache ──────────────────────────────────────────────────────
 *.pt
